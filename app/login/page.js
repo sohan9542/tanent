@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 
+// reCAPTCHA bypass duration in milliseconds (30 minutes)
+const RECAPTCHA_BYPASS_DURATION = 30 * 60 * 1000
+const RECAPTCHA_BYPASS_KEY = 'recaptcha_bypass_timestamp'
+
 export default function LoginPage() {
   const router = useRouter()
   const [tenantId, setTenantId] = useState('')
@@ -12,8 +16,32 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [recaptchaToken, setRecaptchaToken] = useState('')
   const [recaptchaError, setRecaptchaError] = useState('')
+  const [recaptchaBypassed, setRecaptchaBypassed] = useState(false)
 
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+
+  // Check if reCAPTCHA bypass is still valid on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && siteKey) {
+      const bypassTimestamp = localStorage.getItem(RECAPTCHA_BYPASS_KEY)
+      if (bypassTimestamp) {
+        const timestamp = parseInt(bypassTimestamp, 10)
+        const now = Date.now()
+        const timeElapsed = now - timestamp
+        
+        if (timeElapsed < RECAPTCHA_BYPASS_DURATION) {
+          // Bypass is still valid
+          setRecaptchaBypassed(true)
+          setRecaptchaToken('bypassed') // Set a special token to indicate bypass
+          console.log('reCAPTCHA bypass is still active')
+        } else {
+          // Bypass expired, remove it
+          localStorage.removeItem(RECAPTCHA_BYPASS_KEY)
+          console.log('reCAPTCHA bypass expired')
+        }
+      }
+    }
+  }, [siteKey])
 
   // Set up callbacks on component mount
   useEffect(() => {
@@ -22,18 +50,25 @@ export default function LoginPage() {
       window.recaptchaCallback = (token) => {
         setRecaptchaToken(token)
         setRecaptchaError('')
+        // Store bypass timestamp when reCAPTCHA is successfully completed
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(RECAPTCHA_BYPASS_KEY, Date.now().toString())
+          setRecaptchaBypassed(true)
+        }
         console.log('reCAPTCHA token received')
       }
 
       // Callback for reCAPTCHA v2 when it expires
       window.recaptchaExpired = () => {
         setRecaptchaToken('')
+        setRecaptchaBypassed(false)
         console.log('reCAPTCHA token expired')
       }
 
       // Callback for reCAPTCHA v2 errors
       window.recaptchaError = () => {
         setRecaptchaToken('')
+        setRecaptchaBypassed(false)
         setRecaptchaError('reCAPTCHA error occurred')
         console.error('reCAPTCHA error')
       }
@@ -45,17 +80,18 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    // For v2, check if reCAPTCHA is completed
-    if (siteKey && !recaptchaToken) {
+    // For v2, check if reCAPTCHA is completed or bypassed
+    if (siteKey && !recaptchaToken && !recaptchaBypassed) {
       setError('Please complete the reCAPTCHA verification')
       setLoading(false)
       return
     }
 
     // If no site key configured, allow (dev mode)
-    const token = recaptchaToken || (siteKey ? '' : 'dev-token')
+    // If bypassed, use a special token that the server will recognize
+    const token = recaptchaBypassed ? 'bypassed' : (recaptchaToken || (siteKey ? '' : 'dev-token'))
 
-    if (siteKey && !token) {
+    if (siteKey && !token && !recaptchaBypassed) {
       setError('reCAPTCHA verification required')
       setLoading(false)
       return
@@ -145,8 +181,8 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* reCAPTCHA v2 checkbox */}
-          {siteKey && (
+          {/* reCAPTCHA v2 checkbox - only show if not bypassed */}
+          {siteKey && !recaptchaBypassed && (
             <div className="flex justify-center">
               <div
                 id="recaptcha-container"
@@ -156,6 +192,11 @@ export default function LoginPage() {
                 data-expired-callback="recaptchaExpired"
                 data-error-callback="recaptchaError"
               ></div>
+            </div>
+          )}
+          {siteKey && recaptchaBypassed && (
+            <div className="text-xs text-green-600 text-center mt-2">
+              ✓ reCAPTCHA verification bypassed (recently verified)
             </div>
           )}
           {recaptchaError && (

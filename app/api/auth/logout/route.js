@@ -14,12 +14,12 @@ export async function POST(request) {
     // Clear cookie
     cookieStore.delete(getSessionCookieName())
 
-    // Redirect to login page
-    return NextResponse.redirect(new URL('/login', request.url))
+    // Return success response (client will handle redirect)
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Logout error:', error)
-    // Even on error, redirect to login
-    return NextResponse.redirect(new URL('/login', request.url))
+    // Even on error, return success so client can redirect
+    return NextResponse.json({ success: true })
   }
 }
 

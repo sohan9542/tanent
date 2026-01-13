@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentTenant } from '@/lib/middleware'
 import Link from 'next/link'
+import LogoutButton from './logout-button'
 
 export default async function DashboardPage() {
   const tenant = await getCurrentTenant()
@@ -25,14 +26,7 @@ export default async function DashboardPage() {
                 <span className="hidden sm:inline">My Tickets</span>
                 <span className="sm:hidden">Tickets</span>
               </Link>
-              <form action="/api/auth/logout" method="POST">
-                <button
-                  type="submit"
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium"
-                >
-                  Logout
-                </button>
-              </form>
+              <LogoutButton />
             </div>
           </div>
         </div>
