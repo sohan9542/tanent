@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import DeleteModal from './delete-modal'
 
 export default function TenantsPage() {
   const [tenants, setTenants] = useState([])
@@ -9,6 +10,8 @@ export default function TenantsPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, tenant: null })
+  const [isDeleting, setIsDeleting] = useState(false)
   const limit = 20
 
   useEffect(() => {
@@ -40,24 +43,37 @@ export default function TenantsPage() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this tenant?')) {
-      return
-    }
+  const handleDeleteClick = (tenant) => {
+    setDeleteModal({ isOpen: true, tenant })
+  }
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.tenant) return
+
+    setIsDeleting(true)
     try {
-      const response = await fetch(`/api/admin/tenants/${id}`, {
+      const response = await fetch(`/api/admin/tenants/${deleteModal.tenant.id}`, {
         method: 'DELETE',
       })
 
       if (response.ok) {
+        setDeleteModal({ isOpen: false, tenant: null })
         fetchTenants()
       } else {
-        alert('Failed to delete tenant')
+        const data = await response.json()
+        alert(data.error || 'Failed to delete tenant')
       }
     } catch (error) {
       console.error('Error deleting tenant:', error)
-      alert('An error occurred')
+      alert('An error occurred while deleting the tenant')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleDeleteClose = () => {
+    if (!isDeleting) {
+      setDeleteModal({ isOpen: false, tenant: null })
     }
   }
 
@@ -173,7 +189,7 @@ export default function TenantsPage() {
                             Edit
                           </Link>
                           <button
-                            onClick={() => handleDelete(tenant.id)}
+                            onClick={() => handleDeleteClick(tenant)}
                             className="text-red-600 hover:text-red-900"
                           >
                             Delete
@@ -235,7 +251,7 @@ export default function TenantsPage() {
                       Edit
                     </Link>
                     <button
-                      onClick={() => handleDelete(tenant.id)}
+                      onClick={() => handleDeleteClick(tenant)}
                       className="text-red-600 hover:text-red-900 text-sm font-medium"
                     >
                       Delete
@@ -269,6 +285,15 @@ export default function TenantsPage() {
           </>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteModal
+        isOpen={deleteModal.isOpen}
+        tenant={deleteModal.tenant}
+        onClose={handleDeleteClose}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+      />
     </main>
   )
 }

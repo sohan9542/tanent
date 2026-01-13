@@ -181,10 +181,22 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = params
 
-    // Soft delete by setting is_active to false
+    // Delete tenant sessions first (cascade delete)
+    await supabaseAdmin
+      .from('tenant_sessions')
+      .delete()
+      .eq('tenant_id', id)
+
+    // Delete tenant tickets if they exist (cascade delete)
+    await supabaseAdmin
+      .from('tickets')
+      .delete()
+      .eq('tenant_id', id)
+
+    // Hard delete the tenant
     const { error } = await supabaseAdmin
       .from('tenants')
-      .update({ is_active: false })
+      .delete()
       .eq('id', id)
 
     if (error) {
@@ -195,7 +207,7 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error('Delete tenant error:', error)
     return NextResponse.json(
-      { success: false, error: 'An error occurred' },
+      { success: false, error: 'An error occurred while deleting the tenant' },
       { status: 500 }
     )
   }
