@@ -29,6 +29,7 @@ async function getTicket(id, tenantId) {
 
 function getStatusColor(status) {
   const colors = {
+    NEW: 'bg-blue-100 text-blue-800',
     open: 'bg-blue-100 text-blue-800',
     in_progress: 'bg-yellow-100 text-yellow-800',
     resolved: 'bg-green-100 text-green-800',

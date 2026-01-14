@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
+import SiteFooter from '@/app/components/site-footer'
 
 // reCAPTCHA bypass duration in milliseconds (30 minutes)
 const RECAPTCHA_BYPASS_DURATION = 30 * 60 * 1000
@@ -227,6 +228,7 @@ export default function LoginPage() {
           strategy="lazyOnload"
         />
       )}
+      <SiteFooter />
     </div>
   )
 }

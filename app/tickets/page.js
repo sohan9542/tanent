@@ -21,6 +21,17 @@ async function getTickets(tenantId, status = 'all') {
     return { tickets: [], total: 0 }
   }
 
+  // Debug logging
+  console.log(`Found ${count || 0} tickets for tenant ${tenantId} with status filter: ${status}`)
+  if (tickets && tickets.length > 0) {
+    console.log('Sample ticket:', {
+      id: tickets[0].id,
+      title: tickets[0].title,
+      status: tickets[0].status,
+      created_at: tickets[0].created_at
+    })
+  }
+
   return {
     tickets: tickets || [],
     total: count || 0
@@ -29,6 +40,7 @@ async function getTickets(tenantId, status = 'all') {
 
 function getStatusColor(status) {
   const colors = {
+    NEW: 'bg-blue-100 text-blue-800',
     open: 'bg-blue-100 text-blue-800',
     in_progress: 'bg-yellow-100 text-yellow-800',
     resolved: 'bg-green-100 text-green-800',
@@ -64,6 +76,12 @@ export default async function TicketsPage({ searchParams }) {
               >
                 Dashboard
               </Link>
+              <Link
+                href="/pre-tickets"
+                className="text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
+              >
+                Pre-Tickets
+              </Link>
               <form action="/api/auth/logout" method="POST">
                 <button
                   type="submit"
@@ -81,7 +99,12 @@ export default async function TicketsPage({ searchParams }) {
         <div className="px-4 py-6 sm:px-0">
           <div className="bg-white shadow rounded-lg p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Tickets</h2>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Tickets</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Finalized tickets that have been submitted to staff. To create a ticket, finalize a pre-ticket.
+                </p>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Link
                   href="/tickets"
@@ -92,6 +115,16 @@ export default async function TicketsPage({ searchParams }) {
                   }`}
                 >
                   All
+                </Link>
+                <Link
+                  href="/tickets?status=NEW"
+                  className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                    status === 'NEW'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  New
                 </Link>
                 <Link
                   href="/tickets?status=open"
@@ -138,7 +171,21 @@ export default async function TicketsPage({ searchParams }) {
 
             {data.tickets.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">No tickets found.</p>
+                <p className="text-gray-500 mb-4">No tickets found.</p>
+                <p className="text-sm text-gray-400 mb-4">
+                  {status === 'all' 
+                    ? "You haven't created any tickets yet. Report a defect to get started."
+                    : `No tickets with status "${status}". Try viewing all tickets.`
+                  }
+                </p>
+                {status === 'all' && (
+                  <Link
+                    href="/report-defect"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    Report a Defect
+                  </Link>
+                )}
               </div>
             ) : (
               <>
@@ -168,7 +215,7 @@ export default async function TicketsPage({ searchParams }) {
                       {data.tickets.map((ticket) => (
                         <tr key={ticket.id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                            {ticket.title}
+                            {ticket.title || `${ticket.category || 'Ticket'} - ${ticket.location_details || 'Issue'}`}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm">
                             <span
@@ -176,7 +223,7 @@ export default async function TicketsPage({ searchParams }) {
                                 ticket.status
                               )}`}
                             >
-                              {ticket.status.replace('_', ' ')}
+                              {ticket.status === 'NEW' ? 'New' : ticket.status.replace('_', ' ')}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
@@ -208,13 +255,15 @@ export default async function TicketsPage({ searchParams }) {
                       className="block bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow"
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-sm font-medium text-gray-900 flex-1">{ticket.title}</h3>
+                        <h3 className="text-sm font-medium text-gray-900 flex-1">
+                          {ticket.title || `${ticket.category || 'Ticket'} - ${ticket.location_details || 'Issue'}`}
+                        </h3>
                         <span
                           className={`ml-2 inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
                             ticket.status
                           )}`}
                         >
-                          {ticket.status.replace('_', ' ')}
+                          {ticket.status === 'NEW' ? 'New' : ticket.status.replace('_', ' ')}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-xs text-gray-500">

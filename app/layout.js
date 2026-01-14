@@ -1,5 +1,4 @@
 import './globals.css'
-import SiteFooter from './components/site-footer'
 
 export const metadata = {
   title: 'Tenant Management System',
@@ -14,8 +13,7 @@ export default function RootLayout({ children }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body>
-        <main className="pb-24">{children}</main>
-        <SiteFooter />
+        {children}
       </body>
     </html>
   )
