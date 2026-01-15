@@ -166,8 +166,8 @@ export default function ReportDefectPage() {
         throw new Error(data.error || 'Failed to create pre-ticket')
       }
 
-      // Redirect to pre-ticket thread
-      router.push(`/pre-tickets/${data.preTicket.id}`)
+      // Redirect to unified ticket page
+      router.push(`/tickets/${data.preTicket.id}`)
     } catch (err) {
       setError(err.message || 'An error occurred')
       setLoading(false)

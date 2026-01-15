@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getCurrentStaffUser } from '@/lib/staff-auth'
-import { isOrganizationAdmin, getUserOrganizations } from '@/lib/staff-auth'
+import { getUserOrganizations } from '@/lib/staff-auth'
 import { getObjectsForOrganization } from '@/lib/object-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
@@ -41,23 +41,11 @@ export default async function OrgDashboardPage() {
   const staffUser = await getCurrentStaffUser()
 
   if (!staffUser) {
-    redirect('/admin/login')
-  }
-
-  const isAdmin = isOrganizationAdmin(staffUser)
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">You must be an organization admin to access this page.</p>
-        </div>
-      </div>
-    )
+    redirect('/org/login')
   }
 
   const organizations = getUserOrganizations(staffUser)
-  const primaryOrg = organizations[0]?.organization
+  const primaryOrg = organizations[0]
 
   if (!primaryOrg) {
     return (

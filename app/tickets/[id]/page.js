@@ -2,32 +2,69 @@ import { redirect } from 'next/navigation'
 import { getCurrentTenant } from '@/lib/middleware'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
+import PreTicketThread from '@/app/pre-tickets/[id]/pre-ticket-thread'
 
-async function getTicket(id, tenantId) {
-  const { data: ticket, error } = await supabaseAdmin
+async function getTicketData(id, tenantId) {
+  const { data: preTicket } = await supabaseAdmin
+    .from('pre_tickets')
+    .select('*')
+    .eq('id', id)
+    .eq('tenant_id', tenantId)
+    .single()
+
+  if (preTicket) {
+    const { data: ticket } = await supabaseAdmin
+      .from('tickets')
+      .select('*')
+      .eq('pre_ticket_id', preTicket.id)
+      .eq('tenant_id', tenantId)
+      .single()
+
+    const { data: messages } = await supabaseAdmin
+      .from('pre_ticket_messages')
+      .select('*')
+      .eq('pre_ticket_id', preTicket.id)
+      .order('created_at', { ascending: true })
+
+    return { preTicket, ticket: ticket || null, messages: messages || [] }
+  }
+
+  const { data: ticket } = await supabaseAdmin
     .from('tickets')
     .select('*')
     .eq('id', id)
     .eq('tenant_id', tenantId)
     .single()
 
-  if (error || !ticket) {
+  if (!ticket) {
     return null
   }
 
-  return {
-    id: ticket.id,
-    title: ticket.title,
-    description: ticket.description,
-    status: ticket.status,
-    priority: ticket.priority,
-    createdAt: ticket.created_at,
-    updatedAt: ticket.updated_at,
-    resolvedAt: ticket.resolved_at
+  let messages = []
+  let preTicketData = null
+  if (ticket.pre_ticket_id) {
+    const { data: preTicketById } = await supabaseAdmin
+      .from('pre_tickets')
+      .select('*')
+      .eq('id', ticket.pre_ticket_id)
+      .eq('tenant_id', tenantId)
+      .single()
+
+    preTicketData = preTicketById || null
+
+    const { data: preTicketMessages } = await supabaseAdmin
+      .from('pre_ticket_messages')
+      .select('*')
+      .eq('pre_ticket_id', ticket.pre_ticket_id)
+      .order('created_at', { ascending: true })
+
+    messages = preTicketMessages || []
   }
+
+  return { preTicket: preTicketData, ticket, messages }
 }
 
-function getStatusColor(status) {
+function getTicketStatusColor(status) {
   const colors = {
     NEW: 'bg-blue-100 text-blue-800',
     open: 'bg-blue-100 text-blue-800',
@@ -38,13 +75,22 @@ function getStatusColor(status) {
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
-function getPriorityColor(priority) {
+function getPreTicketStatusColor(status) {
+  const colors = {
+    draft: 'bg-gray-100 text-gray-800',
+    in_review: 'bg-yellow-100 text-yellow-800',
+    finalized: 'bg-green-100 text-green-800'
+  }
+  return colors[status] || 'bg-gray-100 text-gray-800'
+}
+
+function getUrgencyColor(urgency) {
   const colors = {
     low: 'bg-green-100 text-green-800',
     medium: 'bg-yellow-100 text-yellow-800',
     high: 'bg-red-100 text-red-800',
   }
-  return colors[priority] || 'bg-gray-100 text-gray-800'
+  return colors[urgency] || 'bg-gray-100 text-gray-800'
 }
 
 export default async function TicketDetailPage({ params }) {
@@ -54,9 +100,9 @@ export default async function TicketDetailPage({ params }) {
     redirect('/login')
   }
 
-  const ticket = await getTicket(params.id, tenant.id)
+  const data = await getTicketData(params.id, tenant.id)
 
-  if (!ticket) {
+  if (!data) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -68,6 +114,14 @@ export default async function TicketDetailPage({ params }) {
       </div>
     )
   }
+
+  const { preTicket, ticket, messages } = data
+  const description = preTicket?.description || ticket?.description
+  const category = preTicket?.category || ticket?.category
+  const locationDetails = preTicket?.location_details || ticket?.location_details
+  const urgency = preTicket?.urgency || ticket?.urgency
+  const images = preTicket?.images || ticket?.images || []
+  const aiAnswers = preTicket?.ai_answers || ticket?.ai_answers || {}
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,57 +163,141 @@ export default async function TicketDetailPage({ params }) {
             ← Back to tickets
           </Link>
 
-          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{ticket.title}</h2>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 capitalize">
+                  {category ? `${category} Defect` : 'Ticket'}
+                </h2>
+                {locationDetails && (
+                  <p className="text-gray-600">Location: {locationDetails}</p>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
-                <span
-                  className={`inline-flex rounded-full px-3 py-1 text-xs sm:text-sm font-semibold ${getStatusColor(
-                    ticket.status
-                  )}`}
-                >
-                  {ticket.status.replace('_', ' ')}
-                </span>
-                <span
-                  className={`inline-flex rounded-full px-3 py-1 text-xs sm:text-sm font-semibold ${getPriorityColor(
-                    ticket.priority
-                  )}`}
-                >
-                  {ticket.priority}
-                </span>
+                {preTicket && (
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-xs sm:text-sm font-semibold ${getPreTicketStatusColor(
+                      preTicket.status
+                    )}`}
+                  >
+                    {preTicket.status.replace('_', ' ')}
+                  </span>
+                )}
+                {ticket && (
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-xs sm:text-sm font-semibold ${getTicketStatusColor(
+                      ticket.status
+                    )}`}
+                  >
+                    {ticket.current_org_role
+                      ? ticket.current_org_role.replace('_', ' ')
+                      : ticket.status.replace('_', ' ')
+                    }
+                  </span>
+                )}
+                {urgency && (
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-xs sm:text-sm font-semibold ${getUrgencyColor(
+                      urgency
+                    )}`}
+                  >
+                    {urgency} urgency
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="prose max-w-none">
+            <div className="prose max-w-none mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-              <p className="text-gray-700 whitespace-pre-wrap">{ticket.description || 'No description provided.'}</p>
+              <p className="text-gray-700 whitespace-pre-wrap">{description || 'No description provided.'}</p>
             </div>
+
+            {images.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Images</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {images.map((image, index) => (
+                    <a
+                      key={index}
+                      href={image.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <img
+                        src={image.url}
+                        alt={`Image ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-md hover:opacity-80 transition"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiAnswers && Object.keys(aiAnswers).length > 0 && (
+              <div className="mb-6 p-4 bg-indigo-50 rounded-md">
+                <h3 className="text-sm font-semibold text-indigo-900 mb-3">Additional Information</h3>
+                <div className="space-y-3">
+                  {Object.entries(aiAnswers).map(([question, answer], index) => (
+                    answer && (
+                      <div key={index}>
+                        <p className="text-sm font-medium text-gray-700 mb-1">{question}</p>
+                        <p className="text-sm text-gray-600">{answer}</p>
+                      </div>
+                    )
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 border-t border-gray-200 pt-6">
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Created</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {new Date(ticket.createdAt).toLocaleString()}
+                    {new Date((ticket || preTicket).created_at).toLocaleString()}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {new Date(ticket.updatedAt).toLocaleString()}
+                    {new Date((ticket || preTicket).updated_at).toLocaleString()}
                   </dd>
                 </div>
-                {ticket.resolvedAt && (
+                {ticket?.resolved_at && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Resolved</dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(ticket.resolvedAt).toLocaleString()}
+                      {new Date(ticket.resolved_at).toLocaleString()}
+                    </dd>
+                  </div>
+                )}
+                {preTicket?.finalized_at && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Finalized</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {new Date(preTicket.finalized_at).toLocaleString()}
                     </dd>
                   </div>
                 )}
               </dl>
             </div>
           </div>
+
+          {preTicket ? (
+            <PreTicketThread
+              preTicketId={preTicket.id}
+              initialMessages={messages}
+              isFinalized={preTicket.status === 'finalized'}
+            />
+          ) : (
+            <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+              <p className="text-sm text-gray-600">
+                Messaging is only available for tickets created from pre-tickets.
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>

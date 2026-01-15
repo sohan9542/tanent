@@ -32,16 +32,7 @@ export default async function OrgUsersPage() {
     redirect('/org/login')
   }
 
-  if (!isOrganizationAdmin(staffUser)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">You must be an organization admin to access this page.</p>
-        </div>
-      </div>
-    )
-  }
+  const isAdmin = isOrganizationAdmin(staffUser)
 
   const primaryOrg = staffUser.memberships?.[0]?.organization
   if (!primaryOrg) {
@@ -63,23 +54,27 @@ export default async function OrgUsersPage() {
           <div className="bg-white shadow rounded-lg p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Organization Users</h2>
-              <Link
-                href="/org/users/new"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-              >
-                Add User
-              </Link>
+              {isAdmin && (
+                <Link
+                  href="/org/users/new"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Add User
+                </Link>
+              )}
             </div>
 
             {users.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 mb-4">No users found.</p>
-                <Link
-                  href="/org/users/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                  Add First User
-                </Link>
+                {isAdmin && (
+                  <Link
+                    href="/org/users/new"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    Add First User
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
@@ -98,9 +93,11 @@ export default async function OrgUsersPage() {
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Status
                       </th>
-                      <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Actions</span>
-                      </th>
+                      {isAdmin && (
+                        <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -130,14 +127,16 @@ export default async function OrgUsersPage() {
                             {user.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <Link
-                            href={`/org/users/${user.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            View
-                          </Link>
-                        </td>
+                        {isAdmin && (
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <Link
+                              href={`/org/users/${user.id}`}
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
+                              View
+                            </Link>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

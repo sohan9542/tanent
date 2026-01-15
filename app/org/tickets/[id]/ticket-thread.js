@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
-export default function PreTicketThread({ preTicketId, initialMessages, isFinalized }) {
-  const router = useRouter()
+export default function TicketThread({ ticketId, initialMessages, orgLabel }) {
   const [messages, setMessages] = useState(initialMessages || [])
   const [message, setMessage] = useState('')
   const [attachments, setAttachments] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [finalizing, setFinalizing] = useState(false)
+
+  const formatDateTime = (value) => {
+    if (!value) return ''
+    return new Date(value).toLocaleString('en-GB', { hour12: false })
+  }
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || [])
@@ -55,12 +57,11 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
         formData.append(`attachment${index}`, file)
       })
 
-      const response = await fetch(`/api/pre-tickets/${preTicketId}/messages`, {
+      const response = await fetch(`/api/org/tickets/${ticketId}/messages`, {
         method: 'POST',
         body: formData
       })
 
-      // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
@@ -74,7 +75,6 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
         throw new Error(data.error || 'Failed to add message')
       }
 
-      // Add new message to list
       setMessages([...messages, data.message])
       setMessage('')
       setAttachments([])
@@ -85,56 +85,10 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
     }
   }
 
-  const handleFinalize = async () => {
-    if (!confirm('Are you sure you want to finalize this pre-ticket? It will be converted into a ticket.')) {
-      return
-    }
-
-    setFinalizing(true)
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/pre-tickets/${preTicketId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'finalize' })
-      })
-
-      // Check if response is JSON before parsing
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        console.error('Non-JSON response:', text.substring(0, 200))
-        throw new Error('Server returned an error. Please try again.')
-      }
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to finalize pre-ticket')
-      }
-
-      // Redirect to unified ticket page (pre-ticket id)
-      router.push(`/tickets/${preTicketId}`)
-    } catch (err) {
-      setError(err.message || 'An error occurred')
-      setFinalizing(false)
-    }
-  }
-
   return (
     <div className="bg-white shadow rounded-lg p-4 sm:p-6">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Message Thread</h3>
-        {!isFinalized && (
-          <button
-            onClick={handleFinalize}
-            disabled={finalizing}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {finalizing ? 'Finalizing...' : 'Finalize & Create Ticket'}
-          </button>
-        )}
+        <h3 className="text-lg font-semibold text-gray-900">Conversation</h3>
       </div>
 
       {error && (
@@ -143,7 +97,6 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
         </div>
       )}
 
-      {/* Messages List */}
       <div className="space-y-4 mb-6">
         {messages.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No messages yet. Start the conversation below.</p>
@@ -157,10 +110,10 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-sm font-medium text-gray-700">
-                  {msg.created_by_tenant ? 'You' : 'Staff'}
+                  {msg.created_by_tenant ? 'Tenant' : (orgLabel || 'Organization')}
                 </span>
                 <span className="text-xs text-gray-500">
-                  {new Date(msg.created_at).toLocaleString()}
+                  {formatDateTime(msg.created_at)}
                 </span>
               </div>
               <p className="text-gray-900 whitespace-pre-wrap mb-2">{msg.message}</p>
@@ -188,7 +141,6 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
         )}
       </div>
 
-      {/* Add Message Form */}
       <form onSubmit={handleAddMessage} className="border-t border-gray-200 pt-6">
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -198,7 +150,7 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
-            placeholder="Type your message here..."
+            placeholder="Write an update to the tenant..."
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
@@ -241,17 +193,11 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
         <button
           type="submit"
           disabled={loading || (!message.trim() && attachments.length === 0)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 text-sm font-semibold bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Sending...' : 'Send Message'}
         </button>
       </form>
-
-      {isFinalized && (
-        <div className="mt-4 text-center text-sm text-gray-600">
-          Ticket submitted to organizations. You can continue messaging here.
-        </div>
-      )}
     </div>
   )
 }

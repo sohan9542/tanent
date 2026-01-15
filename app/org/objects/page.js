@@ -8,19 +8,10 @@ export default async function OrgObjectsPage() {
   const staffUser = await getCurrentStaffUser()
 
   if (!staffUser) {
-    redirect('/admin/login')
+    redirect('/org/login')
   }
 
-  if (!isOrganizationAdmin(staffUser)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">You must be an organization admin to access this page.</p>
-        </div>
-      </div>
-    )
-  }
+  const isAdmin = isOrganizationAdmin(staffUser)
 
   const organizations = getUserOrganizations(staffUser)
   if (organizations.length === 0) {
@@ -61,9 +52,11 @@ export default async function OrgObjectsPage() {
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Your Organization's Role
                       </th>
-                      <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Actions</span>
-                      </th>
+                      {isAdmin && (
+                        <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -94,14 +87,16 @@ export default async function OrgObjectsPage() {
                             )}
                           </div>
                         </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <Link
-                            href={`/org/objects/${assignment.object_id}/roles`}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            Manage Roles
-                          </Link>
-                        </td>
+                        {isAdmin && (
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <Link
+                              href={`/org/objects/${assignment.object_id}/roles`}
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
+                              Manage Roles
+                            </Link>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

@@ -20,13 +20,6 @@ export default async function DashboardPage() {
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
               <Link
-                href="/pre-tickets"
-                className="text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
-              >
-                <span className="hidden sm:inline">My Pre-Tickets</span>
-                <span className="sm:hidden">Drafts</span>
-              </Link>
-              <Link
                 href="/tickets"
                 className="text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
               >
@@ -102,16 +95,10 @@ export default async function DashboardPage() {
                 Report a Defect
               </Link>
               <Link
-                href="/pre-tickets"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                My Pre-Tickets (Drafts)
-              </Link>
-              <Link
                 href="/tickets"
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                My Tickets (Finalized)
+                My Tickets
               </Link>
             </div>
           </div>
