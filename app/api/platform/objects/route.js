@@ -11,22 +11,41 @@ export async function GET() {
 
     const { data: objects, error } = await supabaseAdmin
       .from('objects')
-      .select(`
-        *,
-        assignment:object_assignments(
-          owner_org:organizations!object_assignments_owner_org_id_fkey(id, name),
-          tech_org:organizations!object_assignments_tech_org_id_fkey(id, name),
-          warranty_org:organizations!object_assignments_warranty_org_id_fkey(id, name)
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
       throw error
     }
 
+    const objectIds = (objects || []).map((obj) => obj.id)
+    let assignmentMap = new Map()
+
+    if (objectIds.length > 0) {
+      const { data: assignments, error: assignmentError } = await supabaseAdmin
+        .from('object_assignments')
+        .select(`
+          *,
+          owner_org:organizations!object_assignments_owner_org_id_fkey(id, name),
+          tech_org:organizations!object_assignments_tech_org_id_fkey(id, name),
+          warranty_org:organizations!object_assignments_warranty_org_id_fkey(id, name)
+        `)
+        .in('object_id', objectIds)
+
+      if (assignmentError) {
+        console.error('Error fetching object assignments:', assignmentError)
+      } else {
+        assignmentMap = new Map((assignments || []).map((assignment) => [assignment.object_id, assignment]))
+      }
+    }
+
+    const result = (objects || []).map((obj) => ({
+      ...obj,
+      assignment: assignmentMap.has(obj.id) ? [assignmentMap.get(obj.id)] : []
+    }))
+
     return NextResponse.json({
-      objects: objects || []
+      objects: result
     })
   } catch (error) {
     if (error.message?.includes('redirect')) {

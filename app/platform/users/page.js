@@ -80,6 +80,27 @@ export default function PlatformUsersPage() {
 
   const totalPages = Math.ceil(total / limit)
 
+  const getRoleLabel = (user) => {
+    if (user.role === 'platform_admin') return 'Platform Admin'
+    if (user.role === 'platform_staff') return 'Platform Staff'
+    if (user.memberships && user.memberships.length > 0) {
+      return user.memberships
+        .map((membership) => {
+          const base = membership.role === 'org_admin' ? 'Org Admin' : 'Org Staff'
+          const orgName = membership.organization?.name
+          return orgName ? `${base} (${orgName})` : base
+        })
+        .join(', ')
+    }
+    return 'Organization User'
+  }
+
+  const getRoleBadgeClass = (user) => {
+    if (user.role === 'platform_admin') return 'bg-purple-100 text-purple-800'
+    if (user.role === 'platform_staff') return 'bg-blue-100 text-blue-800'
+    return 'bg-indigo-100 text-indigo-800'
+  }
+
   return (
     <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div className="px-4 py-6 sm:px-0">
@@ -148,12 +169,8 @@ export default function PlatformUsersPage() {
                         {user.name}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
-                        <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                          user.role === 'platform_admin' 
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {user.role === 'platform_admin' ? 'Platform Admin' : 'Platform Staff'}
+                        <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getRoleBadgeClass(user)}`}>
+                          {getRoleLabel(user)}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm">
@@ -199,12 +216,8 @@ export default function PlatformUsersPage() {
                       <p className="text-sm text-gray-600 mt-1">{user.name}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                        user.role === 'platform_admin' 
-                          ? 'bg-purple-100 text-purple-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {user.role === 'platform_admin' ? 'Admin' : 'Staff'}
+                      <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getRoleBadgeClass(user)}`}>
+                        {getRoleLabel(user)}
                       </span>
                       <span
                         className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${

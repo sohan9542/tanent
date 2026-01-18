@@ -33,7 +33,13 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('platform_users')
-      .select('*', { count: 'exact' })
+      .select(`
+        *,
+        memberships:organization_memberships(
+          role,
+          organization:organizations(id, name)
+        )
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
