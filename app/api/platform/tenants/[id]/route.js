@@ -50,6 +50,10 @@ export async function GET(request, { params }) {
       objectId: tenant.object_id,
       object: tenant.object,
       unitNumber: tenant.unit_number,
+      contractStartDate: tenant.contract_start_date,
+      contractEndDate: tenant.contract_end_date,
+      floor: tenant.floor,
+      additionalNotes: tenant.additional_notes,
       isActive: tenant.is_active,
       createdAt: tenant.created_at,
       updatedAt: tenant.updated_at
@@ -83,7 +87,20 @@ export async function PUT(request, { params }) {
     const resolvedParams = await params
     const { id } = resolvedParams
     const body = await request.json()
-    const { tenantId, firstName, lastName, email, phone, objectId, unitNumber, isActive } = body
+    const { 
+      tenantId, 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      objectId, 
+      unitNumber, 
+      contractStartDate,
+      contractEndDate,
+      floor,
+      additionalNotes,
+      isActive 
+    } = body
 
     // Validate
     const validation = validateTenant({ tenantId, firstName, lastName, email })
@@ -130,6 +147,10 @@ export async function PUT(request, { params }) {
       )
     }
 
+    // Parse dates (handle empty strings as null)
+    const contractStart = contractStartDate && contractStartDate.trim() ? contractStartDate.trim() : null
+    const contractEnd = contractEndDate && contractEndDate.trim() ? contractEndDate.trim() : null
+
     // Prepare update data
     const updateData = {
       tenant_id: tenantId.trim(),
@@ -139,6 +160,10 @@ export async function PUT(request, { params }) {
       phone: phone?.trim() || null,
       object_id: objectId,
       unit_number: unitNumber?.trim() || null,
+      contract_start_date: contractStart || null,
+      contract_end_date: contractEnd || null,
+      floor: floor?.trim() || null,
+      additional_notes: additionalNotes?.trim() || null,
       is_active: isActive !== undefined ? isActive : true
     }
 
@@ -191,6 +216,10 @@ export async function PUT(request, { params }) {
         objectId: tenant.object_id,
         object: tenant.object,
         unitNumber: tenant.unit_number,
+        contractStartDate: tenant.contract_start_date,
+        contractEndDate: tenant.contract_end_date,
+        floor: tenant.floor,
+        additionalNotes: tenant.additional_notes,
         isActive: tenant.is_active,
         updatedAt: tenant.updated_at
       }

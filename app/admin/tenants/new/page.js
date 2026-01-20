@@ -16,6 +16,10 @@ export default function NewTenantPage() {
     phone: '',
     buildingName: '',
     unitNumber: '',
+    contractStartDate: '',
+    contractEndDate: '',
+    floor: '',
+    additionalNotes: '',
   })
 
   const handleSubmit = async (e) => {
@@ -187,6 +191,64 @@ export default function NewTenantPage() {
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border"
                 />
               </div>
+
+              <div>
+                <label htmlFor="floor" className="block text-sm font-medium text-gray-700">
+                  Floor
+                </label>
+                <input
+                  type="text"
+                  name="floor"
+                  id="floor"
+                  value={formData.floor}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border"
+                  placeholder="e.g., 3rd Floor, Ground Floor"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="contractStartDate" className="block text-sm font-medium text-gray-700">
+                  Starting Contract
+                </label>
+                <input
+                  type="date"
+                  name="contractStartDate"
+                  id="contractStartDate"
+                  value={formData.contractStartDate}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="contractEndDate" className="block text-sm font-medium text-gray-700">
+                  End of Contract
+                </label>
+                <input
+                  type="date"
+                  name="contractEndDate"
+                  id="contractEndDate"
+                  value={formData.contractEndDate}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="additionalNotes" className="block text-sm font-medium text-gray-700">
+                Additional Notes
+              </label>
+              <textarea
+                name="additionalNotes"
+                id="additionalNotes"
+                rows={4}
+                value={formData.additionalNotes}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-4 py-2 border"
+                placeholder="Any additional information about the tenant..."
+              />
             </div>
 
             <div className="flex justify-end space-x-3">

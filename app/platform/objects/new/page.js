@@ -9,7 +9,11 @@ export default function NewObjectPage() {
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState([])
   const [formData, setFormData] = useState({
+    object_id: '',
     name: '',
+    street: '',
+    zip: '',
+    city: '',
     address: '',
   })
 
@@ -76,8 +80,24 @@ export default function NewObjectPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
+              <label htmlFor="object_id" className="block text-sm font-medium text-gray-700 mb-2">
+                Object ID
+              </label>
+              <input
+                type="text"
+                id="object_id"
+                name="object_id"
+                value={formData.object_id}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="e.g., OBJ-001"
+              />
+              <p className="mt-1 text-sm text-gray-500">Optional unique identifier for this object</p>
+            </div>
+
+            <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Object Name <span className="text-red-500">*</span>
+                Name of Object <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -91,9 +111,56 @@ export default function NewObjectPage() {
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="street" className="block text-sm font-medium text-gray-700 mb-2">
+                  Street
+                </label>
+                <input
+                  type="text"
+                  id="street"
+                  name="street"
+                  value={formData.street}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Street address"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-2">
+                  Zip Code
+                </label>
+                <input
+                  type="text"
+                  id="zip"
+                  name="zip"
+                  value={formData.zip}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="12345"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  id="city"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="City name"
+                />
+              </div>
+            </div>
+
             <div>
               <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                Address
+                Additional Address Info
               </label>
               <textarea
                 id="address"
@@ -102,7 +169,7 @@ export default function NewObjectPage() {
                 value={formData.address}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Street address, city, etc."
+                placeholder="Additional address details, notes, etc."
               />
             </div>
 

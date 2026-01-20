@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentStaffUser } from '@/lib/staff-auth'
 import Link from 'next/link'
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 export default async function OrgLayout({ children }) {
   // Get current organization user
@@ -55,7 +56,10 @@ export default async function OrgLayout({ children }) {
           </Link>
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 space-y-3">
+          <div className="flex justify-center">
+            <GoogleTranslateToggle />
+          </div>
           <form action="/api/org/auth/logout" method="POST">
             <button
               type="submit"

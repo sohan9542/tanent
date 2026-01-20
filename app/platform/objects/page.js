@@ -107,72 +107,92 @@ export default function PlatformObjectsPage() {
             </div>
           ) : (
             <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-              <table className="min-w-full divide-y divide-gray-300">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                      Name
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Address
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Organizations
-                    </th>
-                    <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {objects.map((obj) => {
-                    const assignment = obj.assignment?.[0]
-                    return (
-                      <tr key={obj.id}>
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                          {obj.name}
-                        </td>
-                        <td className="px-3 py-4 text-sm text-gray-500">
-                          {obj.address || 'N/A'}
-                        </td>
-                        <td className="px-3 py-4 text-sm text-gray-500">
-                          <div className="space-y-1">
-                            {assignment?.owner_org && (
-                              <div>Owner: {assignment.owner_org.name}</div>
-                            )}
-                            {assignment?.tech_org && (
-                              <div>Tech: {assignment.tech_org.name}</div>
-                            )}
-                            {assignment?.warranty_org && (
-                              <div>Warranty: {assignment.warranty_org.name}</div>
-                            )}
-                            {!assignment?.owner_org && !assignment?.tech_org && !assignment?.warranty_org && (
-                              <span className="text-gray-400">No assignments</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <div className="flex items-center justify-end gap-3">
-                            <Link
-                              href={`/platform/objects/${obj.id}`}
-                              className="text-indigo-600 hover:text-indigo-900"
-                            >
-                              View
-                            </Link>
-                            <button
-                              onClick={() => setDeleteConfirm({ id: obj.id, name: obj.name })}
-                              className="text-red-600 hover:text-red-900"
-                              disabled={deleting}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-300">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                        Object ID
+                      </th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Name
+                      </th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Street
+                      </th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Zip
+                      </th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        City
+                      </th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Organizations
+                      </th>
+                      <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {objects.map((obj) => {
+                      const assignment = obj.assignment?.[0]
+                      return (
+                        <tr key={obj.id}>
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                            {obj.object_id || 'N/A'}
+                          </td>
+                          <td className="px-3 py-4 text-sm font-medium text-gray-900">
+                            {obj.name}
+                          </td>
+                          <td className="px-3 py-4 text-sm text-gray-500">
+                            {obj.street || 'N/A'}
+                          </td>
+                          <td className="px-3 py-4 text-sm text-gray-500">
+                            {obj.zip || 'N/A'}
+                          </td>
+                          <td className="px-3 py-4 text-sm text-gray-500">
+                            {obj.city || 'N/A'}
+                          </td>
+                          <td className="px-3 py-4 text-sm text-gray-500">
+                            <div className="space-y-1">
+                              {assignment?.owner_org && (
+                                <div>Owner: {assignment.owner_org.name}</div>
+                              )}
+                              {assignment?.tech_org && (
+                                <div>Tech: {assignment.tech_org.name}</div>
+                              )}
+                              {assignment?.warranty_org && (
+                                <div>Warranty: {assignment.warranty_org.name}</div>
+                              )}
+                              {!assignment?.owner_org && !assignment?.tech_org && !assignment?.warranty_org && (
+                                <span className="text-gray-400">No assignments</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <div className="flex items-center justify-end gap-3">
+                              <Link
+                                href={`/platform/objects/${obj.id}`}
+                                className="text-indigo-600 hover:text-indigo-900"
+                              >
+                                View
+                              </Link>
+                              <button
+                                onClick={() => setDeleteConfirm({ id: obj.id, name: obj.name })}
+                                className="text-red-600 hover:text-red-900"
+                                disabled={deleting}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

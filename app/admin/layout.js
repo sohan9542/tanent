@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 import { getCurrentStaffUser } from '@/lib/staff-auth'
 import Link from 'next/link'
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 /**
  * Legacy admin layout - supports both platform and organization users
@@ -68,6 +69,7 @@ export default async function AdminLayout({ children }) {
               >
                 Tickets
               </Link>
+              <GoogleTranslateToggle />
               <form action={isPlatform ? "/api/platform/auth/logout" : "/api/org/auth/logout"} method="POST">
                 <button
                   type="submit"

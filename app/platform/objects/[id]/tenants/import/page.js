@@ -91,9 +91,10 @@ export default function ImportTenantsPage() {
             <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
               <li>File must be .csv or .xlsx format</li>
               <li>First row should contain column headers</li>
-              <li>Required columns: Tenant ID, First Name, Last Name</li>
-              <li>Optional columns: Email, Phone, Unit Number</li>
+              <li><strong>Required columns:</strong> Tenant ID, First Name, Last Name</li>
+              <li><strong>Optional columns:</strong> Email, Phone, Unit Number, Floor, Starting Contract (or Contract Start Date), End of Contract (or Contract End Date), Additional Notes</li>
               <li>Column names are case-insensitive and can use spaces or underscores</li>
+              <li>Date columns should be in YYYY-MM-DD format (e.g., 2024-01-15)</li>
               <li className="font-semibold mt-2">All tenants will be linked to this object</li>
             </ul>
           </div>

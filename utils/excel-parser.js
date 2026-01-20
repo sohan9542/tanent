@@ -78,7 +78,25 @@ export function normalizeColumnName(name) {
     'unit_number': 'unitNumber',
     'unitnumber': 'unitNumber',
     'unit': 'unitNumber',
-    'unit_no': 'unitNumber'
+    'unit_no': 'unitNumber',
+    'contract_start': 'contractStartDate',
+    'contract_start_date': 'contractStartDate',
+    'contractstart': 'contractStartDate',
+    'start_date': 'contractStartDate',
+    'startdate': 'contractStartDate',
+    'starting_contract': 'contractStartDate',
+    'contract_end': 'contractEndDate',
+    'contract_end_date': 'contractEndDate',
+    'contractend': 'contractEndDate',
+    'end_date': 'contractEndDate',
+    'enddate': 'contractEndDate',
+    'end_of_contract': 'contractEndDate',
+    'floor': 'floor',
+    'additional_notes': 'additionalNotes',
+    'additionalnotes': 'additionalNotes',
+    'notes': 'additionalNotes',
+    'additional': 'additionalNotes',
+    'comments': 'additionalNotes'
   }
   
   return mappings[normalized] || normalized

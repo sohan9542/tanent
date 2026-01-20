@@ -65,7 +65,19 @@ export async function POST(request) {
 
   try {
     const body = await request.json()
-    const { tenantId, firstName, lastName, email, phone, buildingName, unitNumber } = body
+    const { 
+      tenantId, 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      buildingName, 
+      unitNumber,
+      contractStartDate,
+      contractEndDate,
+      floor,
+      additionalNotes
+    } = body
 
     // Validate
     const validation = validateTenant({ tenantId, firstName, lastName, email })
@@ -93,6 +105,10 @@ export async function POST(request) {
       )
     }
 
+    // Parse dates (handle empty strings as null)
+    const contractStart = contractStartDate && contractStartDate.trim() ? contractStartDate.trim() : null
+    const contractEnd = contractEndDate && contractEndDate.trim() ? contractEndDate.trim() : null
+
     // Create tenant
     const { data: tenant, error } = await supabaseAdmin
       .from('tenants')
@@ -104,7 +120,11 @@ export async function POST(request) {
         email: email?.trim() || null,
         phone: phone?.trim() || null,
         building_name: buildingName?.trim() || null,
-        unit_number: unitNumber?.trim() || null
+        unit_number: unitNumber?.trim() || null,
+        contract_start_date: contractStart || null,
+        contract_end_date: contractEnd || null,
+        floor: floor?.trim() || null,
+        additional_notes: additionalNotes?.trim() || null
       })
       .select()
       .single()
@@ -124,6 +144,10 @@ export async function POST(request) {
         phone: tenant.phone,
         buildingName: tenant.building_name,
         unitNumber: tenant.unit_number,
+        contractStartDate: tenant.contract_start_date,
+        contractEndDate: tenant.contract_end_date,
+        floor: tenant.floor,
+        additionalNotes: tenant.additional_notes,
         isActive: tenant.is_active,
         createdAt: tenant.created_at
       }

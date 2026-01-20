@@ -1,7 +1,11 @@
 import { redirect } from 'next/navigation'
 import { getCurrentTenant } from '@/lib/middleware'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { getLocale, t, formatDate } from '@/lib/i18n'
 import Link from 'next/link'
+import LanguageSwitcher from '@/app/components/language-switcher'
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 async function getTickets(tenantId) {
   const { data: preTickets, error } = await supabaseAdmin
@@ -49,6 +53,20 @@ function getPreTicketStatusColor(status) {
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
+function getStatusLabel(locale, status) {
+  const statusMap = {
+    'NEW': t(locale, 'status.new'),
+    'open': t(locale, 'status.open'),
+    'in_progress': t(locale, 'status.inProgress'),
+    'resolved': t(locale, 'status.resolved'),
+    'closed': t(locale, 'status.closed'),
+    'draft': t(locale, 'status.draft'),
+    'in_review': t(locale, 'status.inReview'),
+    'finalized': t(locale, 'status.finalized'),
+  }
+  return statusMap[status] || status
+}
+
 export default async function TicketsPage() {
   const tenant = await getCurrentTenant()
 
@@ -56,6 +74,8 @@ export default async function TicketsPage() {
     redirect('/login')
   }
 
+  const cookieStore = await cookies()
+  const locale = getLocale(cookieStore, null)
   const data = await getTickets(tenant.id)
 
   return (
@@ -65,7 +85,7 @@ export default async function TicketsPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
-                <h1 className="text-lg sm:text-xl font-semibold">Tenant Portal</h1>
+                <h1 className="text-lg sm:text-xl font-semibold">{t(locale, 'common.tenantPortal')}</h1>
               </Link>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
@@ -73,20 +93,22 @@ export default async function TicketsPage() {
                 href="/dashboard"
                 className="text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
               >
-                Dashboard
+                {t(locale, 'common.dashboard')}
               </Link>
               <Link
                 href="/report-defect"
                 className="text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
               >
-                Report Defect
+                {t(locale, 'common.reportDefect')}
               </Link>
+              <LanguageSwitcher />
+              <GoogleTranslateToggle />
               <form action="/api/auth/logout" method="POST">
                 <button
                   type="submit"
                   className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium"
                 >
-                  Logout
+                  {t(locale, 'common.logout')}
                 </button>
               </form>
             </div>
@@ -99,30 +121,30 @@ export default async function TicketsPage() {
           <div className="bg-white shadow rounded-lg p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Tickets</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t(locale, 'tickets.title')}</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Draft and finalized tickets are listed together. You can message from any ticket.
+                  {t(locale, 'tickets.subtitle')}
                 </p>
               </div>
               <Link
                 href="/report-defect"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
               >
-                Report a Defect
+                {t(locale, 'common.reportDefect')}
               </Link>
             </div>
 
             {data.tickets.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500 mb-4">No tickets found.</p>
+                <p className="text-gray-500 mb-4">{t(locale, 'tickets.noTickets')}</p>
                 <p className="text-sm text-gray-400 mb-4">
-                  You haven't created any tickets yet. Report a defect to get started.
+                  {t(locale, 'tickets.noTicketsDescription')}
                 </p>
                 <Link
                   href="/report-defect"
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
                 >
-                  Report a Defect
+                  {t(locale, 'common.reportDefect')}
                 </Link>
               </div>
             ) : (
@@ -133,19 +155,19 @@ export default async function TicketsPage() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                          Category
+                          {t(locale, 'tickets.category')}
                         </th>
                         <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Status
+                          {t(locale, 'tickets.status')}
                         </th>
                         <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Ticket Stage
+                          {t(locale, 'tickets.ticketStage')}
                         </th>
                         <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          Created
+                          {t(locale, 'tickets.created')}
                         </th>
                         <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                          <span className="sr-only">View</span>
+                          <span className="sr-only">{t(locale, 'common.view')}</span>
                         </th>
                       </tr>
                     </thead>
@@ -167,7 +189,7 @@ export default async function TicketsPage() {
                               >
                                 {item.ticket.current_org_role
                                   ? item.ticket.current_org_role.replace('_', ' ')
-                                  : (item.ticket.status === 'NEW' ? 'New' : item.ticket.status.replace('_', ' '))
+                                  : getStatusLabel(locale, item.ticket.status)
                                 }
                               </span>
                             ) : (
@@ -176,22 +198,22 @@ export default async function TicketsPage() {
                                   item.status
                                 )}`}
                               >
-                                {item.status.replace('_', ' ')}
+                                {getStatusLabel(locale, item.status)}
                               </span>
                             )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {item.ticket ? 'Finalized' : 'Draft'}
+                            {item.ticket ? t(locale, 'tickets.finalized') : t(locale, 'tickets.draft')}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {new Date(item.created_at).toLocaleDateString()}
+                            {formatDate(locale, item.created_at)}
                           </td>
                           <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                             <Link
                               href={`/tickets/${item.id}`}
                               className="text-indigo-600 hover:text-indigo-900"
                             >
-                              View
+                              {t(locale, 'common.view')}
                             </Link>
                           </td>
                         </tr>
@@ -220,7 +242,7 @@ export default async function TicketsPage() {
                           >
                             {item.ticket.current_org_role
                               ? item.ticket.current_org_role.replace('_', ' ')
-                              : (item.ticket.status === 'NEW' ? 'New' : item.ticket.status.replace('_', ' '))
+                              : getStatusLabel(locale, item.ticket.status)
                             }
                           </span>
                         ) : (
@@ -229,13 +251,13 @@ export default async function TicketsPage() {
                               item.status
                             )}`}
                           >
-                            {item.status.replace('_', ' ')}
+                            {getStatusLabel(locale, item.status)}
                           </span>
                         )}
                       </div>
                       <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span>{item.ticket ? 'Finalized' : 'Draft'}</span>
-                        <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                        <span>{item.ticket ? t(locale, 'tickets.finalized') : t(locale, 'tickets.draft')}</span>
+                        <span>{formatDate(locale, item.created_at)}</span>
                       </div>
                     </Link>
                   ))}

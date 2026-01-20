@@ -1,8 +1,12 @@
 import { redirect } from 'next/navigation'
 import { getCurrentTenant } from '@/lib/middleware'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { getLocale, t, formatDateTime } from '@/lib/i18n'
 import Link from 'next/link'
 import PreTicketThread from '@/app/pre-tickets/[id]/pre-ticket-thread'
+import LanguageSwitcher from '@/app/components/language-switcher'
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 async function getTicketData(id, tenantId) {
   const { data: preTicket } = await supabaseAdmin
@@ -93,6 +97,20 @@ function getUrgencyColor(urgency) {
   return colors[urgency] || 'bg-gray-100 text-gray-800'
 }
 
+function getStatusLabel(locale, status) {
+  const statusMap = {
+    'NEW': t(locale, 'status.new'),
+    'open': t(locale, 'status.open'),
+    'in_progress': t(locale, 'status.inProgress'),
+    'resolved': t(locale, 'status.resolved'),
+    'closed': t(locale, 'status.closed'),
+    'draft': t(locale, 'status.draft'),
+    'in_review': t(locale, 'status.inReview'),
+    'finalized': t(locale, 'status.finalized'),
+  }
+  return statusMap[status] || status
+}
+
 export default async function TicketDetailPage({ params }) {
   const tenant = await getCurrentTenant()
 
@@ -100,15 +118,17 @@ export default async function TicketDetailPage({ params }) {
     redirect('/login')
   }
 
+  const cookieStore = await cookies()
+  const locale = getLocale(cookieStore, null)
   const data = await getTicketData(params.id, tenant.id)
 
   if (!data) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Ticket not found</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">{t(locale, 'tickets.ticketNotFound')}</h1>
           <Link href="/tickets" className="text-indigo-600 hover:text-indigo-900">
-            Back to tickets
+            {t(locale, 'tickets.backToTickets')}
           </Link>
         </div>
       </div>
@@ -130,7 +150,7 @@ export default async function TicketDetailPage({ params }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
-                <h1 className="text-lg sm:text-xl font-semibold">Tenant Portal</h1>
+                <h1 className="text-lg sm:text-xl font-semibold">{t(locale, 'common.tenantPortal')}</h1>
               </Link>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
@@ -138,15 +158,17 @@ export default async function TicketDetailPage({ params }) {
                 href="/tickets"
                 className="text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
               >
-                <span className="hidden sm:inline">My Tickets</span>
-                <span className="sm:hidden">Tickets</span>
+                <span className="hidden sm:inline">{t(locale, 'common.myTickets')}</span>
+                <span className="sm:hidden">{t(locale, 'common.tickets')}</span>
               </Link>
+              <LanguageSwitcher />
+              <GoogleTranslateToggle />
               <form action="/api/auth/logout" method="POST">
                 <button
                   type="submit"
                   className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium"
                 >
-                  Logout
+                  {t(locale, 'common.logout')}
                 </button>
               </form>
             </div>
@@ -160,17 +182,17 @@ export default async function TicketDetailPage({ params }) {
             href="/tickets"
             className="text-indigo-600 hover:text-indigo-900 mb-4 inline-block"
           >
-            ← Back to tickets
+            ← {t(locale, 'tickets.backToTickets')}
           </Link>
 
           <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 capitalize">
-                  {category ? `${category} Defect` : 'Ticket'}
+                  {category ? `${category} ${t(locale, 'tickets.defect')}` : 'Ticket'}
                 </h2>
                 {locationDetails && (
-                  <p className="text-gray-600">Location: {locationDetails}</p>
+                  <p className="text-gray-600">{t(locale, 'tickets.location')}: {locationDetails}</p>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -180,7 +202,7 @@ export default async function TicketDetailPage({ params }) {
                       preTicket.status
                     )}`}
                   >
-                    {preTicket.status.replace('_', ' ')}
+                    {getStatusLabel(locale, preTicket.status)}
                   </span>
                 )}
                 {ticket && (
@@ -191,7 +213,7 @@ export default async function TicketDetailPage({ params }) {
                   >
                     {ticket.current_org_role
                       ? ticket.current_org_role.replace('_', ' ')
-                      : ticket.status.replace('_', ' ')
+                      : getStatusLabel(locale, ticket.status)
                     }
                   </span>
                 )}
@@ -201,20 +223,20 @@ export default async function TicketDetailPage({ params }) {
                       urgency
                     )}`}
                   >
-                    {urgency} urgency
+                    {urgency} {t(locale, 'tickets.urgency')}
                   </span>
                 )}
               </div>
             </div>
 
             <div className="prose max-w-none mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-              <p className="text-gray-700 whitespace-pre-wrap">{description || 'No description provided.'}</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t(locale, 'tickets.description')}</h3>
+              <p className="text-gray-700 whitespace-pre-wrap">{description || t(locale, 'tickets.noDescription')}</p>
             </div>
 
             {images.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Images</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">{t(locale, 'tickets.images')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {images.map((image, index) => (
                     <a
@@ -237,7 +259,7 @@ export default async function TicketDetailPage({ params }) {
 
             {aiAnswers && Object.keys(aiAnswers).length > 0 && (
               <div className="mb-6 p-4 bg-indigo-50 rounded-md">
-                <h3 className="text-sm font-semibold text-indigo-900 mb-3">Additional Information</h3>
+                <h3 className="text-sm font-semibold text-indigo-900 mb-3">{t(locale, 'tickets.additionalInformation')}</h3>
                 <div className="space-y-3">
                   {Object.entries(aiAnswers).map(([question, answer], index) => (
                     answer && (
@@ -254,30 +276,30 @@ export default async function TicketDetailPage({ params }) {
             <div className="mt-8 border-t border-gray-200 pt-6">
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Created</dt>
+                  <dt className="text-sm font-medium text-gray-500">{t(locale, 'tickets.created')}</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {new Date((ticket || preTicket).created_at).toLocaleString()}
+                    {formatDateTime(locale, (ticket || preTicket).created_at)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
+                  <dt className="text-sm font-medium text-gray-500">{t(locale, 'tickets.lastUpdated')}</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {new Date((ticket || preTicket).updated_at).toLocaleString()}
+                    {formatDateTime(locale, (ticket || preTicket).updated_at)}
                   </dd>
                 </div>
                 {ticket?.resolved_at && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Resolved</dt>
+                    <dt className="text-sm font-medium text-gray-500">{t(locale, 'tickets.resolved')}</dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(ticket.resolved_at).toLocaleString()}
+                      {formatDateTime(locale, ticket.resolved_at)}
                     </dd>
                   </div>
                 )}
                 {preTicket?.finalized_at && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Finalized</dt>
+                    <dt className="text-sm font-medium text-gray-500">{t(locale, 'tickets.finalizedAt')}</dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(preTicket.finalized_at).toLocaleString()}
+                      {formatDateTime(locale, preTicket.finalized_at)}
                     </dd>
                   </div>
                 )}

@@ -9,4 +9,129 @@ body {
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
+/* Hide Google Translate banner */
+.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  top: -9999px !important;
+}
 
+body {
+  top: 0px !important;
+  position: relative !important;
+}
+
+/* Hide Google Translate language selector dropdown when not needed */
+#google_translate_element {
+  display: none !important;
+}
+
+/* Hide Google Translate menu frame */
+.goog-te-menu-frame {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Ensure no layout shift from Google Translate */
+.goog-te-banner-frame,
+.goog-te-menu-frame,
+.goog-te-menu-value {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+
+/* Hide the top banner iframe */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
+/* Google injects inline styles to push body down; undo it */
+body {
+  top: 0 !important;
+}
+
+/* Hide the Google widget UI itself */
+#google_translate_element,
+.goog-te-gadget,
+.goog-te-gadget * {
+  display: none !important;
+}
+
+/* Hide the popup menu iframe (language menu) */
+.goog-te-menu-frame {
+  display: none !important;
+}
+
+/* Some sites get an extra wrapper class */
+.skiptranslate {
+  display: inherit !important;
+}
+
+
+/* Hide Google Translate banner iframe */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
+/* Undo Google body push */
+body {
+  top: 0 !important;
+}
+
+/* Hide ALL Google widget UI variants */
+.goog-te-gadget,
+.goog-te-gadget-simple,
+.goog-te-gadget-icon,
+.goog-logo-link,
+.goog-te-combo,
+.goog-te-menu-frame,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd,
+.VIpgJd-ZVi9od-ORHb-OEVmcd {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+
+.VIpgJd-ZVi9od-xl07Ob-OEVmcd skiptranslate{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+#goog-gt-tt{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+.goog-te-gadget-simple{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+iframe{
+  display: none !important;
+}
+
+.VIpgJd-ZVi9od-xl07Ob-OEVmcd {
+  display: none!important;
+}

@@ -1,27 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-
-const CATEGORIES = [
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'heating', label: 'Heating' },
-  { value: 'other', label: 'Other' }
-]
-
-const URGENCY_LEVELS = [
-  { value: 'low', label: 'Low', description: 'Minor issue, can wait' },
-  { value: 'medium', label: 'Medium', description: 'Needs attention soon' },
-  { value: 'high', label: 'High', description: 'Urgent - needs immediate attention' }
-]
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 export default function ReportDefectPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  
+  const CATEGORIES = [
+    { value: 'plumbing', label: 'Plumbing' },
+    { value: 'electrical', label: 'Electrical' },
+    { value: 'heating', label: 'Heating' },
+    { value: 'other', label: 'Other' }
+  ]
+
+  const URGENCY_LEVELS = [
+    { value: 'low', label: 'Low', description: 'Non-urgent issue that can be addressed during regular maintenance' },
+    { value: 'medium', label: 'Medium', description: 'Issue that should be addressed within a few days' },
+    { value: 'high', label: 'High', description: 'Urgent issue requiring immediate attention' }
+  ]
 
   // Form data
   const [category, setCategory] = useState('')
@@ -29,13 +30,26 @@ export default function ReportDefectPage() {
   const [description, setDescription] = useState('')
   const [urgency, setUrgency] = useState('')
   const [images, setImages] = useState([])
-  const [aiFollowups, setAiFollowups] = useState([])
-  const [aiAnswers, setAiAnswers] = useState({})
+  
+  // Conversational AI state
+  const [conversationHistory, setConversationHistory] = useState([]) // Array of {question, answer}
+  const [currentQuestion, setCurrentQuestion] = useState(null)
+  const [currentAnswer, setCurrentAnswer] = useState('')
   const [fetchingAI, setFetchingAI] = useState(false)
-  const [hasAIChecked, setHasAIChecked] = useState(false) // Track if we've checked for AI questions
+  const [hasAIChecked, setHasAIChecked] = useState(false)
+  const [aiQuestionsComplete, setAiQuestionsComplete] = useState(false)
+  const MAX_AI_QUESTIONS = 4
+  const chatScrollRef = useRef(null)
 
   // Dynamic total steps: if AI questions exist or we're fetching, we have 6 steps, otherwise 5
-  const totalSteps = (aiFollowups.length > 0 || fetchingAI) ? 6 : 5
+  const totalSteps = (conversationHistory.length > 0 || currentQuestion || fetchingAI || !aiQuestionsComplete) ? 6 : 5
+
+  // Auto-scroll chat to bottom when new messages are added
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
+    }
+  }, [conversationHistory, currentQuestion, fetchingAI])
 
   // Step 1: Category
   // Step 2: Location
@@ -44,51 +58,86 @@ export default function ReportDefectPage() {
   // Step 5: Urgency
   // Step 6: Review & Submit
 
+  const fetchNextQuestion = async (historyToUse = null) => {
+    setFetchingAI(true)
+    setError(null)
+    
+    // Use provided history or current state
+    const history = historyToUse !== null ? historyToUse : conversationHistory
+    
+    try {
+      const response = await fetch('/api/ai/followups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          category, 
+          description,
+          conversationHistory: history
+        })
+      })
+      const data = await response.json()
+      
+      if (data.question && data.question.trim()) {
+        setCurrentQuestion(data.question.trim())
+        setCurrentAnswer('')
+      } else {
+        // No more questions
+        setAiQuestionsComplete(true)
+        setCurrentQuestion(null)
+        if (currentStep === 4) {
+          setCurrentStep(5) // Move to urgency step
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch AI question:', err)
+      setError('Failed to get question. You can proceed.')
+      setAiQuestionsComplete(true)
+      setCurrentQuestion(null)
+      if (currentStep === 4) {
+        setCurrentStep(5)
+      }
+    } finally {
+      setFetchingAI(false)
+    }
+  }
+
+  const handleAnswerSubmit = async () => {
+    if (!currentAnswer.trim()) {
+      setError('Please provide an answer')
+      return
+    }
+
+    if (!currentQuestion) return
+
+    // Add to conversation history
+    const newHistory = [
+      ...conversationHistory,
+      { question: currentQuestion, answer: currentAnswer.trim() }
+    ]
+    
+    // Update state
+    setConversationHistory(newHistory)
+    setCurrentQuestion(null)
+    setCurrentAnswer('')
+    setError(null)
+
+    // Check if we've reached max questions
+    if (newHistory.length >= MAX_AI_QUESTIONS) {
+      setAiQuestionsComplete(true)
+      setCurrentStep(5) // Move to urgency step
+    } else {
+      // Fetch next question with the UPDATED history
+      await fetchNextQuestion(newHistory)
+    }
+  }
+
   const handleNext = async () => {
     if (currentStep === 3 && description.trim().length >= 10 && !hasAIChecked) {
-      // After description, fetch AI follow-ups
-      // First, move to step 4 and show loading state
-      setFetchingAI(true)
-      setLoading(true)
+      // After description, start AI conversation
       setHasAIChecked(true)
-      setCurrentStep(4) // Move to step 4 immediately to show the Questions step
-      
-      try {
-        const response = await fetch('/api/ai/followups', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category, description })
-        })
-        const data = await response.json()
-        console.log('AI Follow-ups Response:', data) // Debug log
-        if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
-          setAiFollowups(data.questions)
-          // Initialize answers object
-          const answers = {}
-          data.questions.forEach(q => {
-            answers[q] = ''
-          })
-          setAiAnswers(answers)
-          // Stay on step 4 to show questions
-          console.log('AI questions set:', data.questions.length, 'questions') // Debug log
-        } else {
-          // No questions, skip AI step and go to urgency (step 5)
-          console.log('No AI questions received, skipping to urgency') // Debug log
-          setAiFollowups([])
-          setCurrentStep(5)
-        }
-        setError(null)
-      } catch (err) {
-        console.error('Failed to fetch AI follow-ups:', err)
-        // Continue without AI questions, go to urgency
-        setAiFollowups([])
-        setCurrentStep(5)
-        setError(null)
-      } finally {
-        setFetchingAI(false)
-        setLoading(false)
-      }
-      return // Don't continue with normal step increment
+      setCurrentStep(4)
+      await fetchNextQuestion()
+      return
     }
 
     // Normal step progression
@@ -147,8 +196,7 @@ export default function ReportDefectPage() {
       formData.append('locationDetails', locationDetails)
       formData.append('description', description)
       formData.append('urgency', urgency)
-      formData.append('aiFollowups', JSON.stringify(aiFollowups))
-      formData.append('aiAnswers', JSON.stringify(aiAnswers))
+      formData.append('conversationHistory', JSON.stringify(conversationHistory))
 
       // Add images
       images.forEach((image, index) => {
@@ -183,7 +231,8 @@ export default function ReportDefectPage() {
       case 3:
         return description.trim().length >= 10
       case 4:
-        return true // AI questions are optional
+        // Can proceed if AI questions are complete or no current question
+        return aiQuestionsComplete || (!currentQuestion && !fetchingAI)
       case 5:
         return urgency !== ''
       case 6:
@@ -203,13 +252,14 @@ export default function ReportDefectPage() {
                 <h1 className="text-lg sm:text-xl font-semibold">Tenant Portal</h1>
               </Link>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <Link
                 href="/dashboard"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
               >
                 Dashboard
               </Link>
+              <GoogleTranslateToggle />
             </div>
           </div>
         </div>
@@ -217,7 +267,7 @@ export default function ReportDefectPage() {
 
       <main className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow rounded-lg p-6 sm:p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Report a Defect</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Report Defect</h2>
 
           {/* Progress Bar */}
           <div className="mb-8">
@@ -270,7 +320,7 @@ export default function ReportDefectPage() {
             {currentStep === 1 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  What type of defect is this?
+                  Select Category
                 </h3>
                 <div className="space-y-3">
                   {CATEGORIES.map((cat) => (
@@ -300,16 +350,16 @@ export default function ReportDefectPage() {
             {currentStep === 2 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Where is the defect located?
+                  Location Details
                 </h3>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Unit/Apartment Area (optional)
+                  Where is the issue located?
                 </label>
                 <input
                   type="text"
                   value={locationDetails}
                   onChange={(e) => setLocationDetails(e.target.value)}
-                  placeholder="e.g., Kitchen, Bathroom, Unit 3A"
+                  placeholder="e.g., Kitchen, Bathroom, Living Room"
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
@@ -318,16 +368,16 @@ export default function ReportDefectPage() {
             {currentStep === 3 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Describe the issue
+                  Description
                 </h3>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description <span className="text-red-500">*</span>
+                  Describe the issue <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={6}
-                  placeholder="Please provide a detailed description of the defect..."
+                  placeholder="Please provide a detailed description of the defect or issue..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
@@ -338,7 +388,7 @@ export default function ReportDefectPage() {
                 {/* Image Upload */}
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Images (optional, max 5)
+                    Upload Images (Optional, max 5)
                   </label>
                   <input
                     type="file"
@@ -376,46 +426,124 @@ export default function ReportDefectPage() {
             {currentStep === 4 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Additional Questions (Optional)
+                  Additional Questions
                 </h3>
-                {fetchingAI ? (
-                  <div className="p-4 bg-blue-50 rounded-md">
-                    <p className="text-sm text-blue-800">Generating follow-up questions...</p>
-                  </div>
-                ) : aiFollowups.length > 0 ? (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-600 mb-4">
-                      To help us better understand your issue, please answer these questions:
-                    </p>
-                    {aiFollowups.map((question, index) => (
-                      <div key={index}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {question}
-                        </label>
-                        <textarea
-                          value={aiAnswers[question] || ''}
-                          onChange={(e) =>
-                            setAiAnswers({ ...aiAnswers, [question]: e.target.value })
-                          }
-                          rows={3}
-                          placeholder="Your answer (optional)..."
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        />
+                
+                {/* Chat Container with Fixed Height */}
+                <div className="mb-6 border border-gray-200 rounded-lg bg-gray-50 p-4">
+                  {/* Conversation History - Fixed Height Scrollable */}
+                  <div 
+                    ref={chatScrollRef}
+                    className="h-96 overflow-y-auto pr-2 space-y-4 mb-4 scroll-smooth"
+                    style={{ scrollBehavior: 'smooth' }}
+                  >
+                    {conversationHistory.map((item, index) => (
+                      <div key={index} className="space-y-2">
+                        {/* AI Question */}
+                        <div className="flex justify-start">
+                          <div className="max-w-[80%] bg-indigo-50 rounded-lg px-4 py-3">
+                            <div className="flex items-start space-x-2">
+                              <div className="flex-shrink-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-semibold">AI</span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-900 whitespace-pre-wrap">{item.question}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* User Answer */}
+                        <div className="flex justify-end">
+                          <div className="max-w-[80%] bg-gray-100 rounded-lg px-4 py-3">
+                            <p className="text-sm text-gray-900 whitespace-pre-wrap">{item.answer}</p>
+                          </div>
+                        </div>
                       </div>
                     ))}
+
+                    {/* Current Question in Chat */}
+                    {fetchingAI ? (
+                      <div className="flex justify-start">
+                        <div className="bg-indigo-50 rounded-lg px-4 py-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-shrink-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-semibold">AI</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                              </div>
+                              <p className="text-sm text-gray-600">Generating questions...</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : currentQuestion ? (
+                      <div className="flex justify-start">
+                        <div className="max-w-[80%] bg-indigo-50 rounded-lg px-4 py-3">
+                          <div className="flex items-start space-x-2">
+                            <div className="flex-shrink-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-semibold">AI</span>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-900 whitespace-pre-wrap">{currentQuestion}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ) : (
-                  <div className="p-4 bg-gray-50 rounded-md">
-                    <p className="text-sm text-gray-600">No additional questions at this time. You can proceed to the next step.</p>
-                  </div>
-                )}
+
+                  {/* Answer Input - Outside scrollable area */}
+                  {!aiQuestionsComplete && (fetchingAI || currentQuestion) && (
+                    <div className="border-t border-gray-200 pt-4">
+                      <textarea
+                        value={currentAnswer}
+                        onChange={(e) => setCurrentAnswer(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && e.ctrlKey) {
+                            handleAnswerSubmit()
+                          }
+                        }}
+                        rows={3}
+                        placeholder="Type your answer here..."
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        required
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Press Ctrl+Enter to submit
+                      </p>
+                      <button
+                        onClick={handleAnswerSubmit}
+                        disabled={!currentAnswer.trim() || fetchingAI}
+                        className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        Submit Answer
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Completion Message */}
+                  {aiQuestionsComplete && !currentQuestion && !fetchingAI && (
+                    <div className="border-t border-gray-200 pt-4">
+                      <div className="p-4 bg-green-50 rounded-md">
+                        <p className="text-sm text-green-800">
+                          Thank you for answering the questions. You can proceed to the next step.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             {currentStep === 5 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  How urgent is this issue?
+                  Urgency Level
                 </h3>
                 <div className="space-y-3">
                   {URGENCY_LEVELS.map((level) => (
@@ -471,6 +599,25 @@ export default function ReportDefectPage() {
                     <div>
                       <span className="text-sm font-medium text-gray-500">Images:</span>
                       <p className="text-gray-900">{images.length} image(s)</p>
+                    </div>
+                  )}
+                  {conversationHistory.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Questions & Answers:</span>
+                      <div className="mt-2 space-y-3 max-h-64 overflow-y-auto">
+                        {conversationHistory.map((item, index) => (
+                          <div key={index} className="bg-gray-50 rounded-md p-3 space-y-2">
+                            <div>
+                              <p className="text-xs font-medium text-gray-500 mb-1">Q{index + 1}:</p>
+                              <p className="text-sm text-gray-900">{item.question}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-500 mb-1">A{index + 1}:</p>
+                              <p className="text-sm text-gray-900">{item.answer}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

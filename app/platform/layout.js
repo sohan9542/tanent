@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 import Link from 'next/link'
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 export default async function PlatformLayout({ children }) {
   // Get current platform user
@@ -45,7 +46,10 @@ export default async function PlatformLayout({ children }) {
           </Link>
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 space-y-3">
+          <div className="flex justify-center">
+            <GoogleTranslateToggle />
+          </div>
           <form action="/api/platform/auth/logout" method="POST">
             <button
               type="submit"

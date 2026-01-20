@@ -21,6 +21,10 @@ export default function EditTenantPage() {
     phone: '',
     objectId: '',
     unitNumber: '',
+    contractStartDate: '',
+    contractEndDate: '',
+    floor: '',
+    additionalNotes: '',
     isActive: true,
   })
 
@@ -59,6 +63,10 @@ export default function EditTenantPage() {
           phone: data.phone || '',
           objectId: data.objectId || '',
           unitNumber: data.unitNumber || '',
+          contractStartDate: data.contractStartDate || '',
+          contractEndDate: data.contractEndDate || '',
+          floor: data.floor || '',
+          additionalNotes: data.additionalNotes || '',
           isActive: data.isActive !== undefined ? data.isActive : true,
         })
       } else {
@@ -132,7 +140,7 @@ export default function EditTenantPage() {
     <main className="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
       <div className="px-4 py-6 sm:px-0">
         <Link
-          href="/platform/tenants"
+          href="/platform/objects"
           className="text-indigo-600 hover:text-indigo-900 mb-4 inline-block"
         >
           ← Back to Tenants
@@ -259,6 +267,66 @@ export default function EditTenantPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="floor" className="block text-sm font-medium text-gray-700 mb-2">
+                Floor
+              </label>
+              <input
+                type="text"
+                id="floor"
+                name="floor"
+                value={formData.floor}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="e.g., 3rd Floor, Ground Floor"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="contractStartDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Starting Contract
+                </label>
+                <input
+                  type="date"
+                  id="contractStartDate"
+                  name="contractStartDate"
+                  value={formData.contractStartDate}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="contractEndDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  End of Contract
+                </label>
+                <input
+                  type="date"
+                  id="contractEndDate"
+                  name="contractEndDate"
+                  value={formData.contractEndDate}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="additionalNotes" className="block text-sm font-medium text-gray-700 mb-2">
+                Additional Notes
+              </label>
+              <textarea
+                id="additionalNotes"
+                name="additionalNotes"
+                rows={4}
+                value={formData.additionalNotes}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Any additional information about the tenant..."
               />
             </div>
 

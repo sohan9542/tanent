@@ -70,7 +70,7 @@ export async function POST(request) {
     await requirePlatformAdmin()
 
     const body = await request.json()
-    const { name, address } = body
+    const { object_id, name, street, zip, city, address } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
@@ -79,16 +79,43 @@ export async function POST(request) {
       )
     }
 
+    // Check if object_id is unique if provided
+    if (object_id) {
+      const { data: existing, error: checkError } = await supabaseAdmin
+        .from('objects')
+        .select('id')
+        .eq('object_id', object_id.trim())
+        .single()
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'Object ID already exists' },
+          { status: 400 }
+        )
+      }
+    }
+
     const { data: object, error } = await supabaseAdmin
       .from('objects')
       .insert({
+        object_id: object_id?.trim() || null,
         name: name.trim(),
+        street: street?.trim() || null,
+        zip: zip?.trim() || null,
+        city: city?.trim() || null,
         address: address?.trim() || null
       })
       .select()
       .single()
 
     if (error) {
+      // Handle unique constraint violation
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { error: 'Object ID already exists' },
+          { status: 400 }
+        )
+      }
       throw error
     }
 

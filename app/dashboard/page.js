@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentTenant } from '@/lib/middleware'
 import Link from 'next/link'
 import LogoutButton from './logout-button'
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 export default async function DashboardPage() {
   const tenant = await getCurrentTenant()
@@ -26,6 +27,7 @@ export default async function DashboardPage() {
                 <span className="hidden sm:inline">My Tickets</span>
                 <span className="sm:hidden">Tickets</span>
               </Link>
+              <GoogleTranslateToggle />
               <LogoutButton />
             </div>
           </div>
@@ -92,7 +94,7 @@ export default async function DashboardPage() {
                 href="/report-defect"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                Report a Defect
+                Report Defect
               </Link>
               <Link
                 href="/tickets"

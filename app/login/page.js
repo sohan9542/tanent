@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import SiteFooter from '@/app/components/site-footer'
+import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
 
 // reCAPTCHA bypass duration in milliseconds (30 minutes)
 const RECAPTCHA_BYPASS_DURATION = 30 * 60 * 1000
@@ -130,7 +131,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 relative">
+      {/* Google Translate Toggle - Top Right */}
+      <div className="absolute top-4 right-4">
+        <GoogleTranslateToggle />
+      </div>
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">

@@ -100,6 +100,10 @@ export async function POST(request, { params }) {
           .eq('tenant_id', normalized.tenantId.trim())
           .single()
 
+        // Parse dates (handle empty strings as null)
+        const contractStart = normalized.contractStartDate && normalized.contractStartDate.trim() ? normalized.contractStartDate.trim() : null
+        const contractEnd = normalized.contractEndDate && normalized.contractEndDate.trim() ? normalized.contractEndDate.trim() : null
+
         const tenantData = {
           tenant_id: normalized.tenantId.trim(),
           first_name: normalized.firstName.trim(),
@@ -109,6 +113,10 @@ export async function POST(request, { params }) {
           phone: normalized.phone?.trim() || null,
           object_id: objectId, // Always link to the object
           unit_number: normalized.unitNumber?.trim() || null,
+          contract_start_date: contractStart || null,
+          contract_end_date: contractEnd || null,
+          floor: normalized.floor?.trim() || null,
+          additional_notes: normalized.additionalNotes?.trim() || null,
           is_active: true
         }
 
