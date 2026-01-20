@@ -4,6 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { getCurrentStaffUser, canAccessTicket } from '@/lib/staff-auth'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 
+// Force dynamic rendering since we use cookies
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/admin/tickets/[id] - Get ticket details
  */

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 
+// Force dynamic rendering since we use cookies
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/platform/auth/check - Check if platform user is authenticated
  */

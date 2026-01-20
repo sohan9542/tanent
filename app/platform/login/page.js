@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SiteFooter from '@/app/components/site-footer'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default function PlatformLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')

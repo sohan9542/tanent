@@ -81,29 +81,70 @@ export default function LoginPage() {
 
   // Render reCAPTCHA when script loads and container is ready
   useEffect(() => {
-    if (typeof window !== 'undefined' && siteKey && !recaptchaBypassed && recaptchaLoaded && !recaptchaRendered.current) {
+    if (typeof window === 'undefined' || !siteKey || recaptchaBypassed || !recaptchaLoaded || recaptchaRendered.current) {
+      return
+    }
+
+    const renderRecaptcha = () => {
       const container = document.getElementById('recaptcha-container')
-      if (container && window.grecaptcha && window.grecaptcha.render && !container.hasChildNodes()) {
-        try {
-          window.grecaptcha.render('recaptcha-container', {
-            sitekey: siteKey,
-            callback: 'recaptchaCallback',
-            'expired-callback': 'recaptchaExpired',
-            'error-callback': 'recaptchaError',
-          })
-          recaptchaRendered.current = true
-        } catch (error) {
-          console.error('Error rendering reCAPTCHA:', error)
-          setRecaptchaError('Failed to render reCAPTCHA')
-        }
+      if (!container) {
+        return false
+      }
+
+      if (container.hasChildNodes()) {
+        recaptchaRendered.current = true
+        return true
+      }
+
+      if (!window.grecaptcha || !window.grecaptcha.render) {
+        return false
+      }
+
+      try {
+        window.grecaptcha.render('recaptcha-container', {
+          sitekey: siteKey,
+          callback: 'recaptchaCallback',
+          'expired-callback': 'recaptchaExpired',
+          'error-callback': 'recaptchaError',
+        })
+        recaptchaRendered.current = true
+        return true
+      } catch (error) {
+        console.error('Error rendering reCAPTCHA:', error)
+        setRecaptchaError('Failed to render reCAPTCHA')
+        return false
       }
     }
+
+    // Try to render immediately
+    if (renderRecaptcha()) {
+      return
+    }
+
+    // Retry with increasing delays
+    const timeouts = []
+    const delays = [200, 500, 1000, 2000]
     
-    // Reset rendered flag if bypassed
+    delays.forEach((delay) => {
+      const timeout = setTimeout(() => {
+        if (!recaptchaRendered.current) {
+          renderRecaptcha()
+        }
+      }, delay)
+      timeouts.push(timeout)
+    })
+
+    return () => {
+      timeouts.forEach(clearTimeout)
+    }
+  }, [siteKey, recaptchaBypassed, recaptchaLoaded])
+
+  // Reset rendered flag if bypassed
+  useEffect(() => {
     if (recaptchaBypassed) {
       recaptchaRendered.current = false
     }
-  }, [siteKey, recaptchaBypassed, recaptchaLoaded])
+  }, [recaptchaBypassed])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -248,10 +289,22 @@ export default function LoginPage() {
         <Script
           src="https://www.google.com/recaptcha/api.js?render=explicit"
           onLoad={() => {
-            setRecaptchaLoaded(true)
+            // Wait for grecaptcha to be fully initialized
+            const checkGrecaptcha = (attempt = 0) => {
+              if (window.grecaptcha && window.grecaptcha.render) {
+                setRecaptchaLoaded(true)
+              } else if (attempt < 20) {
+                // Retry up to 20 times (4 seconds total)
+                setTimeout(() => checkGrecaptcha(attempt + 1), 200)
+              } else {
+                setRecaptchaError('reCAPTCHA API not available. Please refresh the page.')
+                console.error('grecaptcha not available after script load')
+              }
+            }
+            checkGrecaptcha()
           }}
           onError={() => {
-            setRecaptchaError('Failed to load reCAPTCHA script')
+            setRecaptchaError('Failed to load reCAPTCHA script. Please check your internet connection.')
             console.error('reCAPTCHA script failed to load')
           }}
           strategy="afterInteractive"
