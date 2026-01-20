@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Script from 'next/script'
 
 const COOKIE_NAME = 'googtrans'
@@ -44,15 +44,21 @@ function hardHideGoogleUI() {
 export default function GoogleTranslateToggle() {
   const [lang, setLang] = useState('en')
   const [ready, setReady] = useState(false)
+  const [elementId, setElementId] = useState(null)
 
-  const elementId = useMemo(() => `gt-el-${Math.random().toString(16).slice(2)}`, [])
+  // Generate ID only on client side to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !elementId) {
+      setElementId(`gt-el-${Math.random().toString(16).slice(2)}`)
+    }
+  }, [elementId])
 
   useEffect(() => {
     setLang(getLangFromCookie())
   }, [])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined' || !elementId) return
 
     window.googleTranslateElementInit = () => {
       try {
@@ -107,19 +113,21 @@ export default function GoogleTranslateToggle() {
       />
 
       {/* IMPORTANT: offscreen, not display:none */}
-      <div
-        id={elementId}
-        style={{
-          position: 'fixed',
-          left: '-9999px',
-          top: '-9999px',
-          width: '1px',
-          height: '1px',
-          overflow: 'hidden',
-          opacity: 0,
-          pointerEvents: 'none',
-        }}
-      />
+      {elementId && (
+        <div
+          id={elementId}
+          style={{
+            position: 'fixed',
+            left: '-9999px',
+            top: '-9999px',
+            width: '1px',
+            height: '1px',
+            overflow: 'hidden',
+            opacity: 0,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
 
       <button
         type="button"

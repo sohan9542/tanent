@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import SiteFooter from '@/app/components/site-footer'
@@ -19,6 +19,8 @@ export default function LoginPage() {
   const [recaptchaToken, setRecaptchaToken] = useState('')
   const [recaptchaError, setRecaptchaError] = useState('')
   const [recaptchaBypassed, setRecaptchaBypassed] = useState(false)
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false)
+  const recaptchaRendered = useRef(false)
 
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 
@@ -76,6 +78,32 @@ export default function LoginPage() {
       }
     }
   }, [])
+
+  // Render reCAPTCHA when script loads and container is ready
+  useEffect(() => {
+    if (typeof window !== 'undefined' && siteKey && !recaptchaBypassed && recaptchaLoaded && !recaptchaRendered.current) {
+      const container = document.getElementById('recaptcha-container')
+      if (container && window.grecaptcha && window.grecaptcha.render && !container.hasChildNodes()) {
+        try {
+          window.grecaptcha.render('recaptcha-container', {
+            sitekey: siteKey,
+            callback: 'recaptchaCallback',
+            'expired-callback': 'recaptchaExpired',
+            'error-callback': 'recaptchaError',
+          })
+          recaptchaRendered.current = true
+        } catch (error) {
+          console.error('Error rendering reCAPTCHA:', error)
+          setRecaptchaError('Failed to render reCAPTCHA')
+        }
+      }
+    }
+    
+    // Reset rendered flag if bypassed
+    if (recaptchaBypassed) {
+      recaptchaRendered.current = false
+    }
+  }, [siteKey, recaptchaBypassed, recaptchaLoaded])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -190,14 +218,7 @@ export default function LoginPage() {
           {/* reCAPTCHA v2 checkbox - only show if not bypassed */}
           {siteKey && !recaptchaBypassed && (
             <div className="flex justify-center">
-              <div
-                id="recaptcha-container"
-                className="g-recaptcha"
-                data-sitekey={siteKey}
-                data-callback="recaptchaCallback"
-                data-expired-callback="recaptchaExpired"
-                data-error-callback="recaptchaError"
-              ></div>
+              <div id="recaptcha-container"></div>
             </div>
           )}
           {siteKey && recaptchaBypassed && (
@@ -225,12 +246,15 @@ export default function LoginPage() {
 
       {siteKey && (
         <Script
-          src="https://www.google.com/recaptcha/api.js"
+          src="https://www.google.com/recaptcha/api.js?render=explicit"
+          onLoad={() => {
+            setRecaptchaLoaded(true)
+          }}
           onError={() => {
             setRecaptchaError('Failed to load reCAPTCHA script')
             console.error('reCAPTCHA script failed to load')
           }}
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
       )}
       <SiteFooter />
