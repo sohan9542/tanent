@@ -38,6 +38,8 @@ export default function ReportDefectPage() {
   const [fetchingAI, setFetchingAI] = useState(false)
   const [hasAIChecked, setHasAIChecked] = useState(false)
   const [aiQuestionsComplete, setAiQuestionsComplete] = useState(false)
+  const [allQuestions, setAllQuestions] = useState([]) // Store all questions from API
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const MAX_AI_QUESTIONS = 4
   const chatScrollRef = useRef(null)
 
@@ -77,11 +79,24 @@ export default function ReportDefectPage() {
       })
       const data = await response.json()
       
-      if (data.question && data.question.trim()) {
+      console.log('AI Response:', data) // Debug log
+      
+      // Handle questions array from API
+      if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+        // Store all questions and show the first one
+        setAllQuestions(data.questions)
+        setCurrentQuestionIndex(0)
+        setCurrentQuestion(data.questions[0].trim())
+        setCurrentAnswer('')
+        setAiQuestionsComplete(false)
+      } else if (data.question && data.question.trim()) {
+        // Fallback: single question format
         setCurrentQuestion(data.question.trim())
         setCurrentAnswer('')
+        setAiQuestionsComplete(false)
       } else {
-        // No more questions
+        // No questions returned
+        console.log('No questions returned from API')
         setAiQuestionsComplete(true)
         setCurrentQuestion(null)
         if (currentStep === 4) {
@@ -117,17 +132,29 @@ export default function ReportDefectPage() {
     
     // Update state
     setConversationHistory(newHistory)
-    setCurrentQuestion(null)
     setCurrentAnswer('')
     setError(null)
 
-    // Check if we've reached max questions
-    if (newHistory.length >= MAX_AI_QUESTIONS) {
+    // Check if we have more questions from the array
+    const nextIndex = currentQuestionIndex + 1
+    
+    if (allQuestions.length > 0 && nextIndex < allQuestions.length) {
+      // Show next question from the array
+      setCurrentQuestionIndex(nextIndex)
+      setCurrentQuestion(allQuestions[nextIndex].trim())
+      setAiQuestionsComplete(false) // Make sure we don't show completion message yet
+    } else if (newHistory.length >= MAX_AI_QUESTIONS) {
+      // Reached max questions
       setAiQuestionsComplete(true)
+      setCurrentQuestion(null)
       setCurrentStep(5) // Move to urgency step
     } else {
-      // Fetch next question with the UPDATED history
-      await fetchNextQuestion(newHistory)
+      // No more questions - all answered
+      setAiQuestionsComplete(true)
+      setCurrentQuestion(null)
+      if (currentStep === 4) {
+        setCurrentStep(5) // Move to urgency step
+      }
     }
   }
 
