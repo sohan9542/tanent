@@ -294,6 +294,22 @@ export default async function TicketDetailPage({ params }) {
                     {formatDateTime((ticket || preTicket).updated_at)}
                   </dd>
                 </div>
+                {ticket?.capmo_status && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Capmo Status</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {ticket.capmo_status}
+                    </dd>
+                  </div>
+                )}
+                {ticket?.capmo_last_synced_at && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Capmo Last Synced</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {formatDateTime(ticket.capmo_last_synced_at)}
+                    </dd>
+                  </div>
+                )}
                 {ticket?.resolved_at && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Resolved</dt>

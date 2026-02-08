@@ -49,6 +49,12 @@ export default async function OrgLayout({ children }) {
             Objects
           </Link>
           <Link
+            href="/org/craftsmen"
+            className="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
+          >
+            Craftsmen
+          </Link>
+          <Link
             href="/org/tickets"
             className="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
           >

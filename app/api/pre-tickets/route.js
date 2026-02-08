@@ -68,6 +68,7 @@ export async function POST(request) {
     const buildingId = formData.get('buildingId') || null
     const aiFollowups = formData.get('aiFollowups') // JSON string
     const aiAnswers = formData.get('aiAnswers') // JSON string
+    const conversationHistoryRaw = formData.get('conversationHistory') // JSON string
 
     // Validate required fields
     if (!category || !description || !urgency) {
@@ -139,6 +140,7 @@ export async function POST(request) {
     // Parse AI data
     let aiFollowupsArray = []
     let aiAnswersObj = {}
+    let conversationHistory = []
 
     try {
       if (aiFollowups) {
@@ -147,8 +149,28 @@ export async function POST(request) {
       if (aiAnswers) {
         aiAnswersObj = JSON.parse(aiAnswers)
       }
+      if (conversationHistoryRaw) {
+        conversationHistory = JSON.parse(conversationHistoryRaw)
+      }
     } catch (parseError) {
       console.error('Failed to parse AI data:', parseError)
+    }
+
+    if ((!Array.isArray(aiFollowupsArray) || aiFollowupsArray.length === 0) && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      aiFollowupsArray = conversationHistory
+        .map((item) => item?.question)
+        .filter((question) => typeof question === 'string' && question.trim().length > 0)
+    }
+
+    if ((!aiAnswersObj || Object.keys(aiAnswersObj).length === 0) && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      aiAnswersObj = conversationHistory.reduce((acc, item) => {
+        const question = item?.question
+        const answer = item?.answer
+        if (typeof question === 'string' && question.trim().length > 0) {
+          acc[question] = typeof answer === 'string' ? answer : ''
+        }
+        return acc
+      }, {})
     }
 
     // Get tenant's object_id (or building_id for backward compatibility)

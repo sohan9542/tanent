@@ -16,6 +16,32 @@ The project has been successfully migrated from a simplified role system to a co
 
 ## ✅ COMPLETED WORK
 
+### 0. Milestone 3 - Capmo Integration ✅
+
+#### Added:
+- ✅ Capmo fields on `objects` and `tickets` (migrations 015/016)
+- ✅ Webhook endpoint: `POST /api/integrations/capmo/webhook`
+- ✅ Automatic Capmo ticket creation on pre-ticket finalize
+- ✅ Email notifications via Resend (ticket created + Capmo status changes)
+- ✅ Platform UI for Capmo project mapping per object
+- ✅ Capmo status display in org + tenant ticket details (read-only)
+
+#### Required Env Vars:
+- `CAPMO_API_KEY` (already present)
+- `CRON_SECRET` (protects Capmo polling endpoint)
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `APP_BASE_URL` (for email links)
+- Optional: `RESEND_REPLY_TO`
+- Optional: `CAPMO_WEBHOOK_SECRET` (only if enabling webhook sync)
+
+#### Setup Notes:
+- Set `capmo_project_id` per object in `/platform/objects/[id]`
+- Use "Test Capmo Connection" in object view or call `POST /api/platform/integrations/capmo/test`
+- Polling endpoint: `POST /api/integrations/capmo/poll` with header `x-cron-secret`
+- Webhook endpoint also available at `POST /api/integrations/capmo/webhook` (if enabled)
+- Status updates send tenant + org admin emails (deduped via `email_events`)
+
 ### 1. Database Schema & Migrations ✅
 
 #### Created Migrations:

@@ -199,6 +199,32 @@ export default async function OrgTicketDetailPage({ params }) {
             </div>
           </div>
 
+          {(ticket.capmo_status || ticket.capmo_last_synced_at || ticket.capmo_ticket_id) && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Capmo Status</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                {ticket.capmo_status && (
+                  <div>
+                    <span className="text-gray-500">Status:</span>
+                    <span className="ml-2 text-gray-900">{ticket.capmo_status}</span>
+                  </div>
+                )}
+                {ticket.capmo_last_synced_at && (
+                  <div>
+                    <span className="text-gray-500">Last Synced:</span>
+                    <span className="ml-2 text-gray-900">{new Date(ticket.capmo_last_synced_at).toLocaleString()}</span>
+                  </div>
+                )}
+                {ticket.capmo_ticket_id && (
+                  <div>
+                    <span className="text-gray-500">Capmo Ticket ID:</span>
+                    <span className="ml-2 text-gray-900">{ticket.capmo_ticket_id}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {ticket.tenant && (
             <div className="mb-6 p-4 bg-gray-50 rounded-md">
               <h3 className="text-sm font-semibold text-gray-900 mb-2">Tenant Information</h3>

@@ -225,6 +225,16 @@ export default function ReportDefectPage() {
       formData.append('urgency', urgency)
       formData.append('conversationHistory', JSON.stringify(conversationHistory))
 
+      const aiFollowups = conversationHistory.map((item) => item.question)
+      const aiAnswers = conversationHistory.reduce((acc, item) => {
+        if (item.question) {
+          acc[item.question] = item.answer
+        }
+        return acc
+      }, {})
+      formData.append('aiFollowups', JSON.stringify(aiFollowups))
+      formData.append('aiAnswers', JSON.stringify(aiAnswers))
+
       // Add images
       images.forEach((image, index) => {
         formData.append(`image${index}`, image)

@@ -88,13 +88,21 @@ export default async function OrgObjectsPage() {
                           </div>
                         </td>
                         {isAdmin && (
-                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 space-x-3">
                             <Link
                               href={`/org/objects/${assignment.object_id}/roles`}
                               className="text-indigo-600 hover:text-indigo-900"
                             >
                               Manage Roles
                             </Link>
+                            {assignment.tech_org_id === orgId && (
+                              <Link
+                                href={`/org/objects/${assignment.object_id}/craftsmen`}
+                                className="text-green-600 hover:text-green-900"
+                              >
+                                Craftsmen
+                              </Link>
+                            )}
                           </td>
                         )}
                       </tr>

@@ -14,6 +14,15 @@ export default function ObjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [tenantsLoading, setTenantsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [capmoProjectId, setCapmoProjectId] = useState('')
+  const [capmoProjectName, setCapmoProjectName] = useState('')
+  const [savingCapmo, setSavingCapmo] = useState(false)
+  const [capmoMessage, setCapmoMessage] = useState(null)
+  const [testingCapmo, setTestingCapmo] = useState(false)
+  const [fetchingCapmoProjects, setFetchingCapmoProjects] = useState(false)
+  const [fetchingCapmoProject, setFetchingCapmoProject] = useState(false)
+  const [capmoProjects, setCapmoProjects] = useState(null)
+  const [capmoProjectDetails, setCapmoProjectDetails] = useState(null)
 
   useEffect(() => {
     fetchObject()
@@ -29,6 +38,8 @@ export default function ObjectDetailPage() {
 
       if (response.ok) {
         setObject(data.object)
+        setCapmoProjectId(data.object?.capmo_project_id || '')
+        setCapmoProjectName(data.object?.capmo_project_name || '')
       } else {
         if (response.status === 401) {
           router.push('/platform/login')
@@ -40,6 +51,109 @@ export default function ObjectDetailPage() {
       setError(err.message || 'Failed to load object')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const saveCapmoMapping = async () => {
+    try {
+      setSavingCapmo(true)
+      setCapmoMessage(null)
+
+      const response = await fetch(`/api/platform/objects/${objectId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          capmo_project_id: capmoProjectId,
+          capmo_project_name: capmoProjectName
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        setCapmoMessage({ type: 'error', text: data.error || 'Failed to save Capmo mapping' })
+        return
+      }
+
+      setObject(data.object)
+      setCapmoMessage({ type: 'success', text: 'Capmo mapping saved' })
+    } catch (err) {
+      setCapmoMessage({ type: 'error', text: err.message || 'Failed to save Capmo mapping' })
+    } finally {
+      setSavingCapmo(false)
+    }
+  }
+
+  const testCapmoConnection = async () => {
+    try {
+      setTestingCapmo(true)
+      setCapmoMessage(null)
+      const response = await fetch('/api/platform/integrations/capmo/test', {
+        method: 'POST',
+        credentials: 'include'
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setCapmoMessage({ type: 'error', text: data.error || 'Capmo validation failed' })
+        return
+      }
+      setCapmoMessage({ type: 'success', text: 'Capmo connection validated' })
+    } catch (err) {
+      setCapmoMessage({ type: 'error', text: err.message || 'Capmo validation failed' })
+    } finally {
+      setTestingCapmo(false)
+    }
+  }
+
+  const fetchCapmoProjects = async () => {
+    try {
+      setFetchingCapmoProjects(true)
+      setCapmoMessage(null)
+      setCapmoProjects(null)
+      const response = await fetch('/api/platform/integrations/capmo/projects', {
+        method: 'GET',
+        credentials: 'include'
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setCapmoMessage({ type: 'error', text: data.error || 'Failed to fetch Capmo projects' })
+        return
+      }
+      setCapmoProjects(data.projects || [])
+      setCapmoMessage({ type: 'success', text: `Fetched ${data.projects?.length || 0} Capmo projects` })
+    } catch (err) {
+      setCapmoMessage({ type: 'error', text: err.message || 'Failed to fetch Capmo projects' })
+    } finally {
+      setFetchingCapmoProjects(false)
+    }
+  }
+
+  const fetchCapmoProject = async () => {
+    if (!capmoProjectId) {
+      setCapmoMessage({ type: 'error', text: 'Enter a Capmo Project ID first' })
+      return
+    }
+    try {
+      setFetchingCapmoProject(true)
+      setCapmoMessage(null)
+      setCapmoProjectDetails(null)
+      const response = await fetch(`/api/platform/integrations/capmo/projects/${capmoProjectId}`, {
+        method: 'GET',
+        credentials: 'include'
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setCapmoMessage({ type: 'error', text: data.error || 'Failed to fetch Capmo project' })
+        return
+      }
+      setCapmoProjectDetails(data.project || null)
+      setCapmoMessage({ type: 'success', text: 'Fetched Capmo project details' })
+    } catch (err) {
+      setCapmoMessage({ type: 'error', text: err.message || 'Failed to fetch Capmo project' })
+    } finally {
+      setFetchingCapmoProject(false)
     }
   }
 
@@ -173,6 +287,99 @@ export default function ObjectDetailPage() {
               <p className="text-sm text-gray-500">No assignments configured. Click "Manage Assignments" to set up organizations.</p>
             )}
           </div>
+        </div>
+
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Capmo Integration</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Capmo Project ID
+              </label>
+              <input
+                type="text"
+                value={capmoProjectId}
+                onChange={(e) => setCapmoProjectId(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 12345"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Capmo Project Name
+              </label>
+              <input
+                type="text"
+                value={capmoProjectName}
+                onChange={(e) => setCapmoProjectName(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Optional label"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 mt-4">
+            <button
+              type="button"
+              onClick={saveCapmoMapping}
+              disabled={savingCapmo}
+              className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {savingCapmo ? 'Saving...' : 'Save Capmo Mapping'}
+            </button>
+            <button
+              type="button"
+              onClick={testCapmoConnection}
+              disabled={testingCapmo}
+              className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-indigo-700 border border-indigo-200 hover:bg-indigo-50 disabled:opacity-60"
+            >
+              {testingCapmo ? 'Testing...' : 'Test Capmo Connection'}
+            </button>
+            <button
+              type="button"
+              onClick={fetchCapmoProjects}
+              disabled={fetchingCapmoProjects}
+              className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-indigo-700 border border-indigo-200 hover:bg-indigo-50 disabled:opacity-60"
+            >
+              {fetchingCapmoProjects ? 'Loading...' : 'Fetch Capmo Projects'}
+            </button>
+            <button
+              type="button"
+              onClick={fetchCapmoProject}
+              disabled={fetchingCapmoProject}
+              className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-indigo-700 border border-indigo-200 hover:bg-indigo-50 disabled:opacity-60"
+            >
+              {fetchingCapmoProject ? 'Loading...' : 'Fetch Capmo Project'}
+            </button>
+            {capmoMessage && (
+              <span
+                className={`text-sm ${
+                  capmoMessage.type === 'error' ? 'text-red-600' : 'text-green-600'
+                }`}
+              >
+                {capmoMessage.text}
+              </span>
+            )}
+          </div>
+          {capmoProjects && (
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3">
+              <div className="text-xs font-medium text-gray-600 mb-2">
+                Capmo Projects ({capmoProjects.length})
+              </div>
+              <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words">
+                {JSON.stringify(capmoProjects, null, 2)}
+              </pre>
+            </div>
+          )}
+          {capmoProjectDetails && (
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3">
+              <div className="text-xs font-medium text-gray-600 mb-2">
+                Capmo Project Details
+              </div>
+              <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words">
+                {JSON.stringify(capmoProjectDetails, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
 
         {/* Tenants Section */}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requirePlatformAdmin } from '@/lib/platform-auth'
+import { requirePlatformAdmin, getCurrentPlatformUser } from '@/lib/platform-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
 /**
@@ -134,6 +134,55 @@ export async function DELETE(request, { params }) {
     console.error('Delete object error:', error)
     return NextResponse.json(
       { success: false, error: error.message || 'An error occurred while deleting the object' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * PUT /api/platform/objects/[id] - Update object (Capmo mapping fields)
+ */
+export async function PUT(request, { params }) {
+  try {
+    const user = await getCurrentPlatformUser()
+    if (!user || (user.role !== 'platform_admin' && user.role !== 'platform_staff')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const resolvedParams = await params
+    const { id } = resolvedParams
+    const body = await request.json()
+    const capmoProjectId = body?.capmo_project_id?.trim() || null
+    const capmoProjectName = body?.capmo_project_name?.trim() || null
+
+    const { data: updatedObject, error } = await supabaseAdmin
+      .from('objects')
+      .update({
+        capmo_project_id: capmoProjectId,
+        capmo_project_name: capmoProjectName
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !updatedObject) {
+      throw error || new Error('Object not found')
+    }
+
+    return NextResponse.json({ object: updatedObject })
+  } catch (error) {
+    if (error.message?.includes('redirect')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    console.error('Update object error:', error)
+    return NextResponse.json(
+      { error: 'An error occurred' },
       { status: 500 }
     )
   }
