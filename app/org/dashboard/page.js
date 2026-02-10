@@ -4,6 +4,8 @@ import { getUserOrganizations } from '@/lib/staff-auth'
 import { getObjectsForOrganization } from '@/lib/object-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
+import LogoUpload from './logo-upload'
+import OrgLoginUrl from './org-login-url'
 
 async function getOrganizationStats(organizationId) {
   // Get objects where org is assigned
@@ -61,9 +63,34 @@ export default async function OrgDashboardPage() {
   const objects = await getObjectsForOrganization(primaryOrg.id)
   const stats = await getOrganizationStats(primaryOrg.id)
 
+  // Get organization logo URL
+  const { data: orgData } = await supabaseAdmin
+    .from('organizations')
+    .select('logo_url')
+    .eq('id', primaryOrg.id)
+    .single()
+
+  const logoUrl = orgData?.logo_url || null
+
+  // Check if user is org admin (can upload logo)
+  const { data: membership } = await supabaseAdmin
+    .from('organization_memberships')
+    .select('role')
+    .eq('user_id', staffUser.id)
+    .eq('organization_id', primaryOrg.id)
+    .single()
+
+  const isOrgAdmin = membership?.role === 'org_admin'
+
   return (
     <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          {isOrgAdmin && (
+            <>
+              <LogoUpload organizationId={primaryOrg.id} currentLogoUrl={logoUrl} />
+              <OrgLoginUrl organizationId={primaryOrg.id} />
+            </>
+          )}
           <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
               {primaryOrg.name}

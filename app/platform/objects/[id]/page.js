@@ -334,7 +334,7 @@ export default function ObjectDetailPage() {
             >
               {testingCapmo ? 'Testing...' : 'Test Capmo Connection'}
             </button>
-            <button
+            {/* <button
               type="button"
               onClick={fetchCapmoProjects}
               disabled={fetchingCapmoProjects}
@@ -349,7 +349,7 @@ export default function ObjectDetailPage() {
               className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-indigo-700 border border-indigo-200 hover:bg-indigo-50 disabled:opacity-60"
             >
               {fetchingCapmoProject ? 'Loading...' : 'Fetch Capmo Project'}
-            </button>
+            </button> */}
             {capmoMessage && (
               <span
                 className={`text-sm ${

@@ -1,4 +1,5 @@
 import './globals.css'
+import { CapmoPollProvider } from './contexts/capmo-poll-provider'
 
 export const metadata = {
   title: 'Tenant Management System',
@@ -14,7 +15,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        {children}
+        <CapmoPollProvider>
+          {children}
+        </CapmoPollProvider>
       </body>
     </html>
   )

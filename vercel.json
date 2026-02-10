@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/integrations/capmo/poll",
-      "schedule": "*/2 * * * *"
-    }
-  ]
-}

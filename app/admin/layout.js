@@ -1,8 +1,8 @@
-import { redirect } from 'next/navigation'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 import { getCurrentStaffUser } from '@/lib/staff-auth'
 import Link from 'next/link'
 import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
+import AdminLogoutButton from '@/app/admin/logout-button'
 
 /**
  * Legacy admin layout - supports both platform and organization users
@@ -10,8 +10,23 @@ import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
  */
 export default async function AdminLayout({ children }) {
   // Try platform user first
-  const platformUser = await getCurrentPlatformUser()
-  const staffUser = await getCurrentStaffUser()
+  // Wrap in try-catch to prevent cookie modification errors from crashing
+  let platformUser = null
+  let staffUser = null
+  
+  try {
+    platformUser = await getCurrentPlatformUser()
+  } catch (err) {
+    // Silently fail - cookie modification errors are expected in Server Components
+    console.warn('Failed to get platform user:', err.message)
+  }
+  
+  try {
+    staffUser = await getCurrentStaffUser()
+  } catch (err) {
+    // Silently fail - cookie modification errors are expected in Server Components
+    console.warn('Failed to get staff user:', err.message)
+  }
 
   // If no user, let the page handle its own auth
   if (!platformUser && !staffUser) {
@@ -70,14 +85,9 @@ export default async function AdminLayout({ children }) {
                 Tickets
               </Link>
               <GoogleTranslateToggle />
-              <form action={isPlatform ? "/api/platform/auth/logout" : "/api/org/auth/logout"} method="POST">
-                <button
-                  type="submit"
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium"
-                >
-                  Logout
-                </button>
-              </form>
+              <AdminLogoutButton
+                logoutUrl={isPlatform ? '/api/platform/auth/logout' : '/api/org/auth/logout'}
+              />
             </div>
           </div>
         </div>

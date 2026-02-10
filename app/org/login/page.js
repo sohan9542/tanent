@@ -1,16 +1,40 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import SiteFooter from '@/app/components/site-footer'
 
-export default function OrgLoginPage() {
+function OrgLoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [logoUrl, setLogoUrl] = useState(null)
+  const [loadingLogo, setLoadingLogo] = useState(false)
+
+  // Fetch logo if organization ID is provided
+  useEffect(() => {
+    const orgId = searchParams.get('id')
+    if (orgId) {
+      setLoadingLogo(true)
+      fetch(`/api/org/logo/get?id=${orgId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.logoUrl) {
+            setLogoUrl(data.logoUrl)
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load logo:', err)
+        })
+        .finally(() => {
+          setLoadingLogo(false)
+        })
+    }
+  }, [searchParams])
 
   // Redirect if already logged in
   useEffect(() => {
@@ -70,6 +94,15 @@ export default function OrgLoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
+          {logoUrl && (
+            <div className="flex justify-center mb-6">
+              <img
+                src={logoUrl}
+                alt="Organization logo"
+                className="w-[150px] object-contain"
+              />
+            </div>
+          )}
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Organization Login
           </h2>
@@ -141,5 +174,19 @@ export default function OrgLoginPage() {
       </div>
       <SiteFooter />
     </div>
+  )
+}
+
+export default function OrgLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Loading...</h2>
+        </div>
+      </div>
+    }>
+      <OrgLoginForm />
+    </Suspense>
   )
 }
