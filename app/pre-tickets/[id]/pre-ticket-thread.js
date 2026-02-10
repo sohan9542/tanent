@@ -86,10 +86,6 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
   }
 
   const handleFinalize = async () => {
-    if (!confirm('Are you sure you want to finalize this pre-ticket? It will be converted into a ticket.')) {
-      return
-    }
-
     setFinalizing(true)
     setError(null)
 

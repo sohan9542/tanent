@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCurrentTenant } from '@/lib/middleware'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { createProjectTicket, normalizeCapmoStatus } from '@/lib/integrations/capmo/client'
-import { buildCapmoTicketPayload } from '@/lib/integrations/capmo/mapping'
 import { sendTicketCreatedEmails } from '@/lib/email/notifications'
 import { validateImageFile, uploadImage, MAX_FILES } from '@/lib/storage'
 
@@ -178,98 +176,18 @@ export async function PUT(request, { params }) {
 
       console.log('Ticket created successfully:', ticket.id)
 
-      let capmoTicketIdForEmail = null
-      let objectDetails = null
-
       const { data: object } = await supabaseAdmin
         .from('objects')
         .select('id, name, address, street, zip, city, capmo_project_id, capmo_project_name')
         .eq('id', objectId)
         .single()
 
-      objectDetails = object || null
-
-      // Create Capmo ticket if mapping is available
-      try {
-        if (!ticket.capmo_ticket_id) {
-          if (!objectDetails?.capmo_project_id) {
-            console.log('Capmo ticket skipped: missing capmo_project_id', {
-              ticketId: ticket.id,
-              objectId: objectId
-            })
-            await supabaseAdmin
-              .from('tickets')
-              .update({ capmo_error: 'Missing capmo_project_id mapping' })
-              .eq('id', ticket.id)
-          } else {
-            const payload = buildCapmoTicketPayload({
-              ticket,
-              object: objectDetails,
-              tenant
-            })
-
-            console.log('Creating Capmo ticket', {
-              ticketId: ticket.id,
-              capmoProjectId: objectDetails.capmo_project_id,
-              payload
-            })
-
-            const capmoResponse = await createProjectTicket(
-              objectDetails.capmo_project_id,
-              payload
-            )
-
-            console.log('Capmo ticket response', {
-              ticketId: ticket.id,
-              capmoResponse
-            })
-
-            const capmoTicketId =
-              capmoResponse?.id ||
-              capmoResponse?.ticketId ||
-              capmoResponse?.ticket?.id ||
-              null
-            const capmoStatusRaw =
-              capmoResponse?.status ||
-              capmoResponse?.ticket?.status ||
-              null
-            const capmoStatus = normalizeCapmoStatus(capmoStatusRaw) || capmoStatusRaw || 'created'
-            capmoTicketIdForEmail = capmoTicketId
-
-            const updatePayload = {
-              capmo_ticket_id: capmoTicketId,
-              capmo_status: capmoStatus,
-              capmo_last_synced_at: new Date().toISOString(),
-              capmo_payload: payload,
-              capmo_error: null
-            }
-
-            if (!capmoTicketId) {
-              updatePayload.capmo_error = 'Capmo ticket created but response missing ticket id'
-            }
-
-            await supabaseAdmin
-              .from('tickets')
-              .update(updatePayload)
-              .eq('id', ticket.id)
-          }
-        }
-      } catch (capmoError) {
-        console.error('Capmo ticket creation error:', capmoError)
-        await supabaseAdmin
-          .from('tickets')
-          .update({
-            capmo_error: capmoError?.message || 'Capmo ticket creation failed'
-          })
-          .eq('id', ticket.id)
-      }
-
       try {
         await sendTicketCreatedEmails({
           ticket,
           tenant,
-          object: objectDetails,
-          capmoTicketId: capmoTicketIdForEmail
+          object: object || null,
+          capmoTicketId: null
         })
       } catch (emailError) {
         console.error('Ticket created email error:', emailError)
