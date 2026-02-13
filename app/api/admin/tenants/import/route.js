@@ -71,12 +71,21 @@ export async function POST(request) {
         // Hash last name
         const lastNameHash = await hashLastName(normalized.lastName.trim())
 
-        // Check if tenant exists
+        // Check if tenant_id already exists (must be unique)
         const { data: existing } = await supabaseAdmin
           .from('tenants')
           .select('id')
           .eq('tenant_id', normalized.tenantId.trim())
           .single()
+
+        if (existing) {
+          // Reject duplicate tenant IDs
+          results.errors.push({
+            row: rowNumber,
+            error: `Tenant ID "${normalized.tenantId.trim()}" already exists. Tenant IDs must be unique.`
+          })
+          continue
+        }
 
         // Parse dates (handle empty strings as null)
         const contractStart = normalized.contractStartDate && normalized.contractStartDate.trim() ? normalized.contractStartDate.trim() : null
@@ -98,28 +107,23 @@ export async function POST(request) {
           is_active: true
         }
 
-        if (existing) {
-          // Update existing
-          const { error } = await supabaseAdmin
-            .from('tenants')
-            .update(tenantData)
-            .eq('id', existing.id)
+        // Insert new tenant
+        const { error } = await supabaseAdmin
+          .from('tenants')
+          .insert(tenantData)
 
-          if (error) {
-            throw error
+        if (error) {
+          // Handle unique constraint violation from database
+          if (error.code === '23505') {
+            results.errors.push({
+              row: rowNumber,
+              error: `Tenant ID "${normalized.tenantId.trim()}" already exists. Tenant IDs must be unique.`
+            })
+            continue
           }
-          results.updated++
-        } else {
-          // Insert new
-          const { error } = await supabaseAdmin
-            .from('tenants')
-            .insert(tenantData)
-
-          if (error) {
-            throw error
-          }
-          results.imported++
+          throw error
         }
+        results.imported++
       } catch (error) {
         results.errors.push({
           row: rowNumber,

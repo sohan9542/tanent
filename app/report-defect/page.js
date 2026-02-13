@@ -11,13 +11,6 @@ export default function ReportDefectPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   
-  const CATEGORIES = [
-    { value: 'plumbing', label: 'Plumbing' },
-    { value: 'electrical', label: 'Electrical' },
-    { value: 'heating', label: 'Heating' },
-    { value: 'other', label: 'Other' }
-  ]
-
   const URGENCY_LEVELS = [
     { value: 'low', label: 'Low', description: 'Non-urgent issue that can be addressed during regular maintenance' },
     { value: 'medium', label: 'Medium', description: 'Issue that should be addressed within a few days' },
@@ -25,21 +18,25 @@ export default function ReportDefectPage() {
   ]
 
   // Form data
-  const [category, setCategory] = useState('')
+  const [category, setCategory] = useState('') // Category name
+  const [categoryId, setCategoryId] = useState('') // Category ID from Capmo
+  const [categories, setCategories] = useState([]) // Categories from Capmo
+  const [loadingCategories, setLoadingCategories] = useState(false)
   const [locationDetails, setLocationDetails] = useState('')
   const [description, setDescription] = useState('')
   const [urgency, setUrgency] = useState('')
   const [images, setImages] = useState([])
   
   // Conversational AI state
-  const [conversationHistory, setConversationHistory] = useState([]) // Array of {question, answer}
+  const [conversationHistory, setConversationHistory] = useState([]) // Array of {question, questionType, answer, insufficient}
   const [currentQuestion, setCurrentQuestion] = useState(null)
+  const [currentQuestionType, setCurrentQuestionType] = useState(null)
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [fetchingAI, setFetchingAI] = useState(false)
+  const [evaluatingAnswer, setEvaluatingAnswer] = useState(false)
   const [hasAIChecked, setHasAIChecked] = useState(false)
   const [aiQuestionsComplete, setAiQuestionsComplete] = useState(false)
-  const [allQuestions, setAllQuestions] = useState([]) // Store all questions from API
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [isReAsking, setIsReAsking] = useState(false) // Track if we're re-asking
   const MAX_AI_QUESTIONS = 4
   const chatScrollRef = useRef(null)
 
@@ -52,6 +49,33 @@ export default function ReportDefectPage() {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
     }
   }, [conversationHistory, currentQuestion, fetchingAI])
+
+  // Fetch categories from Capmo on component mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true)
+        const categoriesResponse = await fetch('/api/capmo/ticket-categories', {
+          credentials: 'include'
+        })
+        
+        if (categoriesResponse.ok) {
+          const data = await categoriesResponse.json()
+          setCategories(data.categories || [])
+        } else {
+          const errorData = await categoriesResponse.json()
+          console.error('Failed to fetch categories:', errorData.error || 'Unknown error')
+          // Don't show error to user, just log it
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err)
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+
+    fetchCategories()
+  }, [])
 
   // Step 1: Category
   // Step 2: Location
@@ -68,12 +92,13 @@ export default function ReportDefectPage() {
     const history = historyToUse !== null ? historyToUse : conversationHistory
     
     try {
-      const response = await fetch('/api/ai/followups', {
+      const response = await fetch('/api/ai/followups/next', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           category, 
           description,
+          locationDetails,
           conversationHistory: history
         })
       })
@@ -81,36 +106,48 @@ export default function ReportDefectPage() {
       
       console.log('AI Response:', data) // Debug log
       
-      // Handle questions array from API
-      if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
-        // Store all questions and show the first one
-        setAllQuestions(data.questions)
-        setCurrentQuestionIndex(0)
-        setCurrentQuestion(data.questions[0].trim())
-        setCurrentAnswer('')
-        setAiQuestionsComplete(false)
-      } else if (data.question && data.question.trim()) {
-        // Fallback: single question format
-        setCurrentQuestion(data.question.trim())
-        setCurrentAnswer('')
-        setAiQuestionsComplete(false)
-      } else {
-        // No questions returned
-        console.log('No questions returned from API')
+      if (data.error) {
+        throw new Error(data.error)
+      }
+      
+      // HARD STOP: if we have 4+ sufficient, never show another question
+      const sufficientCount = history.filter(item => !item.insufficient).length
+      if (sufficientCount >= MAX_AI_QUESTIONS) {
         setAiQuestionsComplete(true)
         setCurrentQuestion(null)
-        if (currentStep === 4) {
-          setCurrentStep(5) // Move to urgency step
-        }
+        setCurrentQuestionType(null)
+        setIsReAsking(false)
+        return { isComplete: true }
       }
+      if (data.isComplete || !data.question || !data.question.trim()) {
+        setAiQuestionsComplete(true)
+        setCurrentQuestion(null)
+        setCurrentQuestionType(null)
+        setIsReAsking(false)
+        return { isComplete: true }
+      }
+      
+      // Check if this is a re-ask (last item in history was insufficient)
+      const isReAsk = history.length > 0 && history[history.length - 1].insufficient
+      setIsReAsking(isReAsk)
+      
+      // Show the next question (retry message is already included in question from backend)
+      setCurrentQuestion(data.question.trim())
+      setCurrentQuestionType(data.questionType)
+      setCurrentAnswer('')
+      setAiQuestionsComplete(false)
+      return { isComplete: false }
     } catch (err) {
       console.error('Failed to fetch AI question:', err)
       setError('Failed to get question. You can proceed.')
       setAiQuestionsComplete(true)
       setCurrentQuestion(null)
+      setCurrentQuestionType(null)
+      setIsReAsking(false)
       if (currentStep === 4) {
         setCurrentStep(5)
       }
+      return { isComplete: true }
     } finally {
       setFetchingAI(false)
     }
@@ -122,39 +159,122 @@ export default function ReportDefectPage() {
       return
     }
 
-    if (!currentQuestion) return
+    if (!currentQuestion || !currentQuestionType) return
 
-    // Add to conversation history
-    const newHistory = [
-      ...conversationHistory,
-      { question: currentQuestion, answer: currentAnswer.trim() }
-    ]
+    const answerText = currentAnswer.trim()
     
-    // Update state
-    setConversationHistory(newHistory)
-    setCurrentAnswer('')
+    // Store the question as-is (backend handles retry messages)
+    const questionForHistory = currentQuestion
+    
+    // Evaluate answer quality first
+    setEvaluatingAnswer(true)
     setError(null)
 
-    // Check if we have more questions from the array
-    const nextIndex = currentQuestionIndex + 1
-    
-    if (allQuestions.length > 0 && nextIndex < allQuestions.length) {
-      // Show next question from the array
-      setCurrentQuestionIndex(nextIndex)
-      setCurrentQuestion(allQuestions[nextIndex].trim())
-      setAiQuestionsComplete(false) // Make sure we don't show completion message yet
-    } else if (newHistory.length >= MAX_AI_QUESTIONS) {
-      // Reached max questions
-      setAiQuestionsComplete(true)
-      setCurrentQuestion(null)
-      setCurrentStep(5) // Move to urgency step
-    } else {
-      // No more questions - all answered
-      setAiQuestionsComplete(true)
-      setCurrentQuestion(null)
-      if (currentStep === 4) {
-        setCurrentStep(5) // Move to urgency step
+    try {
+      const evalResponse = await fetch('/api/ai/followups/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          category,
+          description,
+          locationDetails,
+          lastQuestion: questionForHistory,
+          lastAnswer: answerText
+        })
+      })
+      
+      const evalData = await evalResponse.json()
+      
+      if (evalResponse.status !== 200) {
+        throw new Error(evalData.error || 'Evaluation failed')
       }
+      
+      // Check if answer is insufficient
+      if (!evalData.isSufficient) {
+        setEvaluatingAnswer(false)
+        // Use retryMessage from API if provided, otherwise show generic message
+        setError(evalData.retryMessage || 'Could you please provide more details?')
+        
+        const newHistory = [
+          ...conversationHistory,
+          { 
+            question: questionForHistory, 
+            questionType: currentQuestionType,
+            answer: answerText, 
+            insufficient: true,
+            retryMessage: evalData.retryMessage || '',
+            createdAt: new Date().toISOString()
+          }
+        ]
+        setConversationHistory(newHistory)
+        setCurrentAnswer('')
+        const sufficientCount = newHistory.filter(item => !item.insufficient).length
+        if (sufficientCount >= MAX_AI_QUESTIONS) {
+          setAiQuestionsComplete(true)
+          setCurrentQuestion(null)
+          setCurrentQuestionType(null)
+          setIsReAsking(false)
+          return
+        }
+        await fetchNextQuestion(newHistory)
+        return
+      }
+
+      // Answer is sufficient - add to history
+      const newHistory = [
+        ...conversationHistory,
+        { 
+          question: questionForHistory, 
+          questionType: currentQuestionType,
+          answer: answerText,
+          insufficient: false,
+          createdAt: new Date().toISOString()
+        }
+      ]
+      setConversationHistory(newHistory)
+      setCurrentAnswer('')
+      setError(null)
+      setEvaluatingAnswer(false)
+      setIsReAsking(false)
+
+      const sufficientCount = newHistory.filter(item => !item.insufficient).length
+      
+      if (sufficientCount >= MAX_AI_QUESTIONS) {
+        setAiQuestionsComplete(true)
+        setCurrentQuestion(null)
+        setCurrentQuestionType(null)
+        setIsReAsking(false)
+        return
+      }
+      await fetchNextQuestion(newHistory)
+    } catch (err) {
+      console.error('Failed to evaluate answer:', err)
+      // On error, assume answer is sufficient
+      const newHistory = [
+        ...conversationHistory,
+        { 
+          question: questionForHistory, 
+          questionType: currentQuestionType,
+          answer: answerText,
+          insufficient: false,
+          createdAt: new Date().toISOString()
+        }
+      ]
+      setConversationHistory(newHistory)
+      setCurrentAnswer('')
+      setEvaluatingAnswer(false)
+      setIsReAsking(false)
+      
+      // Count only sufficient answers
+      const sufficientCount = newHistory.filter(item => !item.insufficient).length
+      if (sufficientCount >= MAX_AI_QUESTIONS) {
+        setAiQuestionsComplete(true)
+        setCurrentQuestion(null)
+        setCurrentQuestionType(null)
+        setIsReAsking(false)
+        return
+      }
+      await fetchNextQuestion(newHistory)
     }
   }
 
@@ -219,7 +339,8 @@ export default function ReportDefectPage() {
 
     try {
       const formData = new FormData()
-      formData.append('category', category)
+      formData.append('category', category) // Category name
+      formData.append('categoryId', categoryId) // Category ID from Capmo
       formData.append('locationDetails', locationDetails)
       formData.append('description', description)
       formData.append('urgency', urgency)
@@ -262,14 +383,15 @@ export default function ReportDefectPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return category !== ''
+        return category !== '' && categoryId !== ''
       case 2:
         return true // Location is optional
       case 3:
         return description.trim().length >= 10
       case 4:
-        // Can proceed if AI questions are complete or no current question
-        return aiQuestionsComplete || (!currentQuestion && !fetchingAI)
+        // Next enabled ONLY when we have 4 SUFFICIENT question/answer pairs
+        const sufficientCount = conversationHistory.filter(item => !item.insufficient).length
+        return sufficientCount >= MAX_AI_QUESTIONS
       case 5:
         return urgency !== ''
       case 6:
@@ -359,28 +481,40 @@ export default function ReportDefectPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Select Category
                 </h3>
-                <div className="space-y-3">
-                  {CATEGORIES.map((cat) => (
-                    <label
-                      key={cat.value}
-                      className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition ${
-                        category === cat.value
-                          ? 'border-indigo-600 bg-indigo-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="category"
-                        value={cat.value}
-                        checked={category === cat.value}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="mr-3 h-4 w-4 text-indigo-600"
-                      />
-                      <span className="text-gray-900 font-medium">{cat.label}</span>
+                {loadingCategories ? (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">Loading categories...</p>
+                  </div>
+                ) : categories.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">No categories available. Please contact support.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category <span className="text-red-500">*</span>
                     </label>
-                  ))}
-                </div>
+                    <select
+                      value={categoryId}
+                      onChange={(e) => {
+                        const selectedCategory = categories.find(cat => cat.id === e.target.value)
+                        if (selectedCategory) {
+                          setCategoryId(selectedCategory.id)
+                          setCategory(selectedCategory.name)
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    >
+                      <option value="">Select a category...</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
 
@@ -513,29 +647,51 @@ export default function ReportDefectPage() {
                                 <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                                 <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                               </div>
-                              <p className="text-sm text-gray-600">Generating questions...</p>
+                              <p className="text-sm text-gray-600">Thinking...</p>
                             </div>
                           </div>
                         </div>
                       </div>
-                    ) : currentQuestion ? (
+                    ) : evaluatingAnswer ? (
                       <div className="flex justify-start">
-                        <div className="max-w-[80%] bg-indigo-50 rounded-lg px-4 py-3">
-                          <div className="flex items-start space-x-2">
-                            <div className="flex-shrink-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <div className="bg-yellow-50 rounded-lg px-4 py-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex-shrink-0 w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center">
                               <span className="text-white text-xs font-semibold">AI</span>
                             </div>
-                            <div className="flex-1">
-                              <p className="text-sm text-gray-900 whitespace-pre-wrap">{currentQuestion}</p>
+                            <div className="flex items-center space-x-2">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-yellow-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                <div className="w-2 h-2 bg-yellow-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                <div className="w-2 h-2 bg-yellow-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                              </div>
+                              <p className="text-sm text-gray-600">Reviewing your answer...</p>
                             </div>
                           </div>
                         </div>
                       </div>
-                    ) : null}
+                    ) : (() => {
+                      const sufficientCount = conversationHistory.filter(item => !item.insufficient).length
+                      if (sufficientCount >= MAX_AI_QUESTIONS) return null
+                      return currentQuestion ? (
+                        <div className="flex justify-start">
+                          <div className="max-w-[80%] bg-indigo-50 rounded-lg px-4 py-3">
+                            <div className="flex items-start space-x-2">
+                              <div className="flex-shrink-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-semibold">AI</span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-900 whitespace-pre-wrap">{currentQuestion}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null
+                    })()}
                   </div>
 
                   {/* Answer Input - Outside scrollable area */}
-                  {!aiQuestionsComplete && (fetchingAI || currentQuestion) && (
+                  {!aiQuestionsComplete && !fetchingAI && !evaluatingAnswer && currentQuestion && conversationHistory.filter(item => !item.insufficient).length < MAX_AI_QUESTIONS && (
                     <div className="border-t border-gray-200 pt-4">
                       <textarea
                         value={currentAnswer}
@@ -546,16 +702,16 @@ export default function ReportDefectPage() {
                           }
                         }}
                         rows={3}
-                        placeholder="Type your answer here..."
+                        placeholder="Type your answer here... (Please provide detailed information)"
                         className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         required
                       />
                       <p className="mt-1 text-xs text-gray-500">
-                        Press Ctrl+Enter to submit
+                        Press Ctrl+Enter to submit • Please provide detailed answers
                       </p>
                       <button
                         onClick={handleAnswerSubmit}
-                        disabled={!currentAnswer.trim() || fetchingAI}
+                        disabled={!currentAnswer.trim()}
                         className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                       >
                         Submit Answer

@@ -61,7 +61,8 @@ export async function POST(request) {
     }
 
     const formData = await request.formData()
-    const category = formData.get('category')
+    const category = formData.get('category') // Category name
+    const categoryId = formData.get('categoryId') // Category ID from Capmo
     const locationDetails = formData.get('locationDetails') || ''
     const description = formData.get('description')
     const urgency = formData.get('urgency')
@@ -78,7 +79,9 @@ export async function POST(request) {
       )
     }
 
-    if (!['plumbing', 'electrical', 'heating', 'other'].includes(category)) {
+    // Category validation: accept any category name (from Capmo) if categoryId is provided
+    // Otherwise fall back to old validation for backward compatibility
+    if (!categoryId && !['plumbing', 'electrical', 'heating', 'other'].includes(category)) {
       return NextResponse.json(
         { error: 'Invalid category' },
         { status: 400 }
@@ -189,6 +192,7 @@ export async function POST(request) {
         object_id: finalObjectId,
         building_id: finalObjectId, // Keep for backward compatibility
         category: category,
+        category_id: categoryId || null, // Store Capmo category ID if provided
         location_details: locationDetails.trim() || null,
         description: description.trim(),
         urgency: urgency,

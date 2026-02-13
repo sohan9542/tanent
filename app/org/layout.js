@@ -16,9 +16,9 @@ export default async function OrgLayout({ children }) {
 
   // Organization user is authenticated, show full layout with sidebar
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Left Sidebar */}
-      <aside className="w-64 bg-white shadow-lg flex flex-col">
+    <div className="min-h-screen bg-gray-50">
+      {/* Left Sidebar - Fixed */}
+      <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-lg flex flex-col z-10">
         <div className="p-4 border-b border-gray-200">
           <Link href="/org/dashboard" className="text-gray-700 hover:text-gray-900">
             <h1 className="text-lg sm:text-xl font-semibold">
@@ -29,7 +29,7 @@ export default async function OrgLayout({ children }) {
           <p className="text-xs text-gray-400">{staffUser.email}</p>
         </div>
         
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <Link
             href="/org/dashboard"
             className="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
@@ -77,8 +77,8 @@ export default async function OrgLayout({ children }) {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      {/* Main Content - Offset for fixed sidebar */}
+      <main className="ml-64 min-h-screen">
         {children}
       </main>
     </div>

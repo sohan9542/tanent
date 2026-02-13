@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Toast } from '@/app/components/toast'
 
 const ROLE_SEQUENCE = ['technical', 'warranty', 'owner']
 
@@ -16,6 +17,7 @@ function roleLabel(role) {
 export default function TicketActions({ ticketId, currentRole, roles }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [toast, setToast] = useState(null)
 
   const current = normalizeRole(currentRole)
   const userRoles = (roles || []).map((role) => role.toLowerCase())
@@ -27,6 +29,20 @@ export default function TicketActions({ ticketId, currentRole, roles }) {
   const handleAction = async (action) => {
     setLoading(true)
     setError(null)
+    setToast(null)
+    
+    // Determine success message based on action
+    let successMessage = 'Ticket updated successfully'
+    if (action === 'advance') {
+      const current = normalizeRole(currentRole)
+      const nextRole = current ? ROLE_SEQUENCE[ROLE_SEQUENCE.indexOf(current) + 1] : 'technical'
+      successMessage = `Ticket passed to ${roleLabel(nextRole)} successfully`
+    } else if (action === 'approve') {
+      successMessage = 'Ticket approved and closed successfully'
+    } else if (action === 'set_technical') {
+      successMessage = 'Ticket assigned to Technical successfully'
+    }
+    
     try {
       const response = await fetch(`/api/org/tickets/${ticketId}`, {
         method: 'PATCH',
@@ -46,10 +62,16 @@ export default function TicketActions({ ticketId, currentRole, roles }) {
         throw new Error(data.error || 'Failed to update ticket')
       }
 
-      window.location.reload()
+      // Show success toast
+      setToast({ message: successMessage, type: 'success' })
+      
+      // Reload after a short delay to let user see the toast
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
     } catch (err) {
       setError(err.message || 'An error occurred')
-    } finally {
+      setToast({ message: err.message || 'An error occurred', type: 'error' })
       setLoading(false)
     }
   }
@@ -73,31 +95,49 @@ export default function TicketActions({ ticketId, currentRole, roles }) {
 
   if (isOwnerStage) {
     return (
-      <div className="flex flex-col sm:flex-row gap-2">
-        <button
-          type="button"
-          onClick={() => handleAction('approve')}
-          className="px-5 py-2.5 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-          disabled={loading}
-        >
-          {loading ? 'Approving...' : 'Approve & Close'}
-        </button>
-        {error && <span className="text-xs text-red-600">{error}</span>}
-      </div>
+      <>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={() => handleAction('approve')}
+            className="px-5 py-2.5 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+            disabled={loading}
+          >
+            {loading ? 'Approving...' : 'Approve & Close'}
+          </button>
+          {error && <span className="text-xs text-red-600">{error}</span>}
+        </div>
+      </>
     )
   }
 
   return (
-    <div className="flex flex-col sm:flex-row gap-2">
-      <button
-        type="button"
-        onClick={() => handleAction('advance')}
-        className="px-5 py-2.5 text-sm font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-        disabled={loading || !nextRole}
-      >
-        {loading ? 'Updating...' : `Pass to ${roleLabel(nextRole)}`}
-      </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
-    </div>
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button
+          type="button"
+          onClick={() => handleAction('advance')}
+          className="px-5 py-2.5 text-sm font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+          disabled={loading || !nextRole}
+        >
+          {loading ? 'Updating...' : `Pass to ${roleLabel(nextRole)}`}
+        </button>
+        {error && <span className="text-xs text-red-600">{error}</span>}
+      </div>
+    </>
   )
 }

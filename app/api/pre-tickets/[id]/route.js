@@ -147,6 +147,7 @@ export async function PUT(request, { params }) {
         title: `${preTicket.category} - ${preTicket.location_details || 'Issue'}`,
         description: preTicket.description,
         category: preTicket.category,
+        category_id: preTicket.category_id || null, // Capmo ticket category ID
         location_details: preTicket.location_details,
         urgency: preTicket.urgency,
         status: 'NEW',
