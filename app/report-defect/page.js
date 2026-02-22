@@ -23,6 +23,8 @@ export default function ReportDefectPage() {
   const [categories, setCategories] = useState([]) // Categories from Capmo
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [locationDetails, setLocationDetails] = useState('')
+  const [locationLabels, setLocationLabels] = useState([]) // Available location labels
+  const [loadingLocations, setLoadingLocations] = useState(false)
   const [description, setDescription] = useState('')
   const [urgency, setUrgency] = useState('')
   const [images, setImages] = useState([])
@@ -75,6 +77,31 @@ export default function ReportDefectPage() {
     }
 
     fetchCategories()
+  }, [])
+
+  // Fetch location labels on component mount
+  useEffect(() => {
+    const fetchLocationLabels = async () => {
+      try {
+        setLoadingLocations(true)
+        const locationsResponse = await fetch('/api/admin/defect-locations', {
+          credentials: 'include'
+        })
+        
+        if (locationsResponse.ok) {
+          const data = await locationsResponse.json()
+          setLocationLabels(data.locations || [])
+        } else {
+          console.error('Failed to fetch location labels')
+        }
+      } catch (err) {
+        console.error('Error fetching location labels:', err)
+      } finally {
+        setLoadingLocations(false)
+      }
+    }
+
+    fetchLocationLabels()
   }, [])
 
   // Step 1: Category
@@ -329,8 +356,8 @@ export default function ReportDefectPage() {
   }
 
   const handleSubmit = async () => {
-    if (!category || !description || !urgency) {
-      setError('Please complete all required fields')
+    if (!category || !locationDetails?.trim() || !description || !urgency) {
+      setError('Please complete all required fields (category, location details, description, urgency)')
       return
     }
 
@@ -385,7 +412,7 @@ export default function ReportDefectPage() {
       case 1:
         return category !== '' && categoryId !== ''
       case 2:
-        return true // Location is optional
+        return (locationDetails || '').trim() !== ''
       case 3:
         return description.trim().length >= 10
       case 4:
@@ -521,18 +548,31 @@ export default function ReportDefectPage() {
             {currentStep === 2 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Location Details
+                  Location Details <span className="text-red-500">*</span>
                 </h3>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Where is the issue located?
                 </label>
-                <input
-                  type="text"
-                  value={locationDetails}
-                  onChange={(e) => setLocationDetails(e.target.value)}
-                  placeholder="e.g., Kitchen, Bathroom, Living Room"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                />
+                {loadingLocations ? (
+                  <p className="text-sm text-gray-500">Loading locations...</p>
+                ) : (
+                  <select
+                    value={locationDetails}
+                    onChange={(e) => setLocationDetails(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    required
+                  >
+                    <option value="">Select a location...</option>
+                    {locationLabels.map((location) => (
+                      <option key={location.id} value={location.label}>
+                        {location.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="mt-2 text-xs text-gray-500">
+                  Select the location where the issue is located (required)
+                </p>
               </div>
             )}
 

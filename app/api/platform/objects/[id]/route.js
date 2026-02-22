@@ -140,7 +140,7 @@ export async function DELETE(request, { params }) {
 }
 
 /**
- * PUT /api/platform/objects/[id] - Update object (Capmo mapping fields)
+ * PUT /api/platform/objects/[id] - Update object (Capmo mapping, handoff_delivery)
  */
 export async function PUT(request, { params }) {
   try {
@@ -157,12 +157,22 @@ export async function PUT(request, { params }) {
     const body = await request.json()
     const capmoProjectId = body?.capmo_project_id?.trim() || null
     const capmoProjectName = body?.capmo_project_name?.trim() || null
+    const handoffDelivery = body?.handoff_delivery === 'capmo' ? 'capmo' : 'email'
+
+    // If admin selects "Send via Capmo", object must have Capmo Project ID
+    if (handoffDelivery === 'capmo' && !capmoProjectId) {
+      return NextResponse.json(
+        { error: 'Cannot save "Send via Capmo" without a Capmo Project ID. Please set Capmo Project ID first.' },
+        { status: 400 }
+      )
+    }
 
     const { data: updatedObject, error } = await supabaseAdmin
       .from('objects')
       .update({
         capmo_project_id: capmoProjectId,
-        capmo_project_name: capmoProjectName
+        capmo_project_name: capmoProjectName,
+        handoff_delivery: handoffDelivery
       })
       .eq('id', id)
       .select()

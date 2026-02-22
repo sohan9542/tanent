@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
+import OrganizationLogos from './OrganizationLogos'
 
 async function getOrganization(id) {
   const { data: organization, error } = await supabaseAdmin
@@ -168,6 +169,12 @@ export default async function OrganizationDetailPage({ params }) {
               </table>
             </div>
           )}
+        </div>
+
+        {/* Organization Logos */}
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Branding & Logos</h3>
+          <OrganizationLogos organizationId={organizationId} />
         </div>
 
         {/* Assigned Objects */}

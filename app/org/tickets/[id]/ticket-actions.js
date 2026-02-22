@@ -62,9 +62,15 @@ export default function TicketActions({ ticketId, currentRole, roles }) {
         throw new Error(data.error || 'Failed to update ticket')
       }
 
-      // Show success toast
-      setToast({ message: successMessage, type: 'success' })
-      
+      // Show success toast; if passing to warranty and email wasn't sent, include reason
+      let toastMessage = successMessage
+      if (action === 'advance' && data.warrantyEmailSent === false && data.warrantyEmailReason) {
+        toastMessage = `${successMessage} Email not sent: ${data.warrantyEmailReason}`
+        setToast({ message: toastMessage, type: 'error' })
+      } else {
+        setToast({ message: toastMessage, type: 'success' })
+      }
+
       // Reload after a short delay to let user see the toast
       setTimeout(() => {
         window.location.reload()

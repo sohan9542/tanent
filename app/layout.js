@@ -15,9 +15,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <CapmoPollProvider>
-          {children}
-        </CapmoPollProvider>
+        <CapmoPollProvider>{children}</CapmoPollProvider>
       </body>
     </html>
   )

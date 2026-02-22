@@ -5,6 +5,7 @@ import { getCurrentStaffUser, getAccessibleBuildings } from '@/lib/staff-auth'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 import { getAccessibleObjectIds } from '@/lib/object-auth'
 import Link from 'next/link'
+import TicketFilters from './TicketFilters'
 
 async function getTickets(staffUser, platformUser, legacyAdmin, filters = {}) {
   let query = supabaseAdmin
@@ -41,6 +42,12 @@ async function getTickets(staffUser, platformUser, legacyAdmin, filters = {}) {
   }
   if (filters.urgency) {
     query = query.eq('urgency', filters.urgency)
+  }
+  if (filters.warranty_flag !== undefined && filters.warranty_flag !== 'all') {
+    query = query.eq('warranty_flag', filters.warranty_flag === 'true')
+  }
+  if (filters.location_id) {
+    query = query.or(`object_id.eq.${filters.location_id},building_id.eq.${filters.location_id}`)
   }
 
   const { data: tickets, error, count } = await query
@@ -89,8 +96,17 @@ export default async function AdminTicketsPage({ searchParams }) {
   const filters = {
     status: searchParams?.status || 'all',
     category: searchParams?.category || null,
-    urgency: searchParams?.urgency || null
+    urgency: searchParams?.urgency || null,
+    warranty_flag: searchParams?.warranty_flag || 'all',
+    location_id: searchParams?.location_id || null
   }
+
+  // Get locations for filter dropdown
+  const { data: locations } = await supabaseAdmin
+    .from('objects')
+    .select('id, name')
+    .is('deleted_at', null)
+    .order('name', { ascending: true })
 
   const data = await getTickets(staffUser, platformUser, legacyAdmin, filters)
 
@@ -117,6 +133,24 @@ export default async function AdminTicketsPage({ searchParams }) {
               >
                 Tickets
               </Link>
+              <Link
+                href="/admin/locations"
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Locations
+              </Link>
+              <Link
+                href="/admin/branding"
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Branding
+              </Link>
+              <Link
+                href="/admin/settings"
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Settings
+              </Link>
               <form action="/api/admin/auth/logout" method="POST">
                 <button
                   type="submit"
@@ -133,50 +167,55 @@ export default async function AdminTicketsPage({ searchParams }) {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="bg-white shadow rounded-lg p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Tickets</h2>
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href="/admin/tickets"
-                  className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
-                    filters.status === 'all'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  All
-                </Link>
-                <Link
-                  href="/admin/tickets?status=NEW"
-                  className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
-                    filters.status === 'NEW'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  New
-                </Link>
-                <Link
-                  href="/admin/tickets?status=in_progress"
-                  className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
-                    filters.status === 'in_progress'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  In Progress
-                </Link>
-                <Link
-                  href="/admin/tickets?status=resolved"
-                  className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
-                    filters.status === 'resolved'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  Resolved
-                </Link>
+            <div className="mb-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Tickets</h2>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/admin/tickets"
+                    className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                      filters.status === 'all'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    All
+                  </Link>
+                  <Link
+                    href="/admin/tickets?status=NEW"
+                    className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                      filters.status === 'NEW'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    New
+                  </Link>
+                  <Link
+                    href="/admin/tickets?status=in_progress"
+                    className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                      filters.status === 'in_progress'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    In Progress
+                  </Link>
+                  <Link
+                    href="/admin/tickets?status=resolved"
+                    className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                      filters.status === 'resolved'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Resolved
+                  </Link>
+                </div>
               </div>
+              
+              {/* Additional Filters */}
+              <TicketFilters locations={locations} />
             </div>
 
             {data.tickets.length === 0 ? (
@@ -204,6 +243,9 @@ export default async function AdminTicketsPage({ searchParams }) {
                         </th>
                         <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                           Urgency
+                        </th>
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                          Warranty
                         </th>
                         <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                           Created
@@ -243,6 +285,15 @@ export default async function AdminTicketsPage({ searchParams }) {
                               >
                                 {ticket.urgency}
                               </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm">
+                            {ticket.warranty_flag ? (
+                              <span className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 bg-yellow-100 text-yellow-800">
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">No</span>
                             )}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
@@ -287,6 +338,9 @@ export default async function AdminTicketsPage({ searchParams }) {
                         <p>Building: {ticket.object?.name || ticket.building?.name || ticket.tenant?.building_name || 'N/A'}</p>
                         {ticket.urgency && (
                           <p>Urgency: <span className="capitalize">{ticket.urgency}</span></p>
+                        )}
+                        {ticket.warranty_flag && (
+                          <p>Warranty: <span className="text-yellow-600 font-semibold">Flagged</span></p>
                         )}
                         <p>{new Date(ticket.created_at).toLocaleDateString()}</p>
                       </div>

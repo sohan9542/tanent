@@ -5,15 +5,16 @@ import { useState } from 'react'
 export default function OrgLoginUrl({ organizationId }) {
   const [copied, setCopied] = useState(false)
 
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : ''
-  const loginUrl = `${baseUrl}/org/login?id=${organizationId}`
+  // Use relative path for display so server and client match (avoids hydration error)
+  const loginUrlPath = `/org/login?id=${organizationId}`
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(loginUrl)
+      // Copy full URL to clipboard when user clicks
+      const fullUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}${loginUrlPath}`
+        : loginUrlPath
+      await navigator.clipboard.writeText(fullUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
@@ -30,7 +31,7 @@ export default function OrgLoginUrl({ organizationId }) {
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-200 rounded-md">
           <code className="text-sm text-gray-800 break-all select-all block">
-            {loginUrl}
+            {loginUrlPath}
           </code>
         </div>
         <button

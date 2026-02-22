@@ -89,12 +89,18 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
     setFinalizing(true)
     setError(null)
 
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
+
     try {
       const response = await fetch(`/api/pre-tickets/${preTicketId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'finalize' })
+        body: JSON.stringify({ action: 'finalize' }),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type')
@@ -110,10 +116,16 @@ export default function PreTicketThread({ preTicketId, initialMessages, isFinali
         throw new Error(data.error || 'Failed to finalize pre-ticket')
       }
 
-      // Redirect to unified ticket page (pre-ticket id)
+      // Redirect to unified ticket page (pre-ticket id) so user sees finalized state
       router.push(`/tickets/${preTicketId}`)
     } catch (err) {
-      setError(err.message || 'An error occurred')
+      clearTimeout(timeoutId)
+      if (err.name === 'AbortError') {
+        setError('Request timed out. Please try again.')
+      } else {
+        setError(err.message || 'An error occurred')
+      }
+    } finally {
       setFinalizing(false)
     }
   }

@@ -78,6 +78,13 @@ export async function POST(request) {
         { status: 400 }
       )
     }
+    const locationDetailsTrimmed = (locationDetails && typeof locationDetails === 'string') ? locationDetails.trim() : ''
+    if (!locationDetailsTrimmed) {
+      return NextResponse.json(
+        { error: 'Location details are required' },
+        { status: 400 }
+      )
+    }
 
     // Category validation: accept any category name (from Capmo) if categoryId is provided
     // Otherwise fall back to old validation for backward compatibility
@@ -193,7 +200,7 @@ export async function POST(request) {
         building_id: finalObjectId, // Keep for backward compatibility
         category: category,
         category_id: categoryId || null, // Store Capmo category ID if provided
-        location_details: locationDetails.trim() || null,
+        location_details: locationDetailsTrimmed,
         description: description.trim(),
         urgency: urgency,
         status: 'draft',

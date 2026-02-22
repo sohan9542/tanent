@@ -1,0 +1,292 @@
+import { redirect } from 'next/navigation'
+import { supabaseAdmin } from '@/lib/supabase/server'
+import { getCurrentPlatformUser } from '@/lib/platform-auth'
+import Link from 'next/link'
+import TicketFilters from './TicketFilters'
+
+async function getTickets(platformUser, filters = {}) {
+  let query = supabaseAdmin
+    .from('tickets')
+    .select(`
+      *,
+      tenant:tenants(id, tenant_id, first_name, last_name, building_name, unit_number),
+      object:objects(id, name)
+    `, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  // Platform admin sees all tickets
+  const isPlatformAdmin = platformUser?.role === 'platform_admin'
+  
+  if (!isPlatformAdmin) {
+    // Platform staff might have limited access - for now, show all
+    // Can be customized later
+  }
+
+  // Apply filters
+  if (filters.status && filters.status !== 'all') {
+    query = query.eq('status', filters.status)
+  }
+  if (filters.category) {
+    query = query.eq('category', filters.category)
+  }
+  if (filters.urgency) {
+    query = query.eq('urgency', filters.urgency)
+  }
+  if (filters.warranty_flag !== undefined && filters.warranty_flag !== 'all') {
+    query = query.eq('warranty_flag', filters.warranty_flag === 'true')
+  }
+  if (filters.location_id) {
+    query = query.or(`object_id.eq.${filters.location_id},building_id.eq.${filters.location_id}`)
+  }
+
+  const { data: tickets, error, count } = await query
+
+  if (error) {
+    console.error('Error fetching tickets:', error)
+    return { tickets: [], total: 0 }
+  }
+
+  return {
+    tickets: tickets || [],
+    total: count || 0
+  }
+}
+
+function getStatusColor(status) {
+  const colors = {
+    NEW: 'bg-blue-100 text-blue-800',
+    Open: 'bg-blue-100 text-blue-800',
+    'In Review': 'bg-yellow-100 text-yellow-800',
+    Closed: 'bg-gray-100 text-gray-800',
+    open: 'bg-blue-100 text-blue-800',
+    in_progress: 'bg-yellow-100 text-yellow-800',
+    resolved: 'bg-green-100 text-green-800',
+    closed: 'bg-gray-100 text-gray-800'
+  }
+  return colors[status] || 'bg-gray-100 text-gray-800'
+}
+
+function getUrgencyColor(urgency) {
+  const colors = {
+    low: 'bg-green-100 text-green-800',
+    medium: 'bg-yellow-100 text-yellow-800',
+    high: 'bg-red-100 text-red-800'
+  }
+  return colors[urgency] || 'bg-gray-100 text-gray-800'
+}
+
+export default async function PlatformTicketsPage({ searchParams }) {
+  // Check authorization - platform users only
+  const platformUser = await getCurrentPlatformUser()
+
+  if (!platformUser) {
+    redirect('/platform/login')
+  }
+
+  const filters = {
+    status: searchParams?.status || 'all',
+    category: searchParams?.category || null,
+    urgency: searchParams?.urgency || null,
+    warranty_flag: searchParams?.warranty_flag || 'all',
+    location_id: searchParams?.location_id || null
+  }
+
+  // Get locations for filter dropdown
+  const { data: locations } = await supabaseAdmin
+    .from('objects')
+    .select('id, name')
+    .is('deleted_at', null)
+    .order('name', { ascending: true })
+
+  const data = await getTickets(platformUser, filters)
+
+  return (
+    <div className="p-6">
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Tickets</h2>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/platform/tickets"
+                className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                  filters.status === 'all'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All
+              </Link>
+              <Link
+                href="/platform/tickets?status=Open"
+                className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                  filters.status === 'Open'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Open
+              </Link>
+              <Link
+                href="/platform/tickets?status=In Review"
+                className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                  filters.status === 'In Review'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                In Review
+              </Link>
+              <Link
+                href="/platform/tickets?status=Closed"
+                className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium ${
+                  filters.status === 'Closed'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Closed
+              </Link>
+            </div>
+          </div>
+          
+          {/* Additional Filters */}
+          <TicketFilters locations={locations} />
+        </div>
+
+        {data.tickets.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No tickets found.</p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-300">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                      Category
+                    </th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Tenant
+                    </th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Building
+                    </th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Status
+                    </th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Urgency
+                    </th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Warranty
+                    </th>
+                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Created
+                    </th>
+                    <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                      <span className="sr-only">View</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {data.tickets.map((ticket) => (
+                    <tr key={ticket.id}>
+                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 capitalize">
+                        {ticket.category || 'N/A'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {ticket.tenant ? `${ticket.tenant.first_name} ${ticket.tenant.last_name}` : 'N/A'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {ticket.object?.name || ticket.building?.name || ticket.tenant?.building_name || 'N/A'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                        <span
+                          className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
+                            ticket.status
+                          )}`}
+                        >
+                          {ticket.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                        {ticket.urgency && (
+                          <span
+                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getUrgencyColor(
+                              ticket.urgency
+                            )}`}
+                          >
+                            {ticket.urgency}
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                        {ticket.warranty_flag ? (
+                          <span className="inline-flex rounded-full px-2 text-xs font-semibold leading-5 bg-yellow-100 text-yellow-800">
+                            Yes
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">No</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {new Date(ticket.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                        <Link
+                          href={`/platform/tickets/${ticket.id}`}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+              {data.tickets.map((ticket) => (
+                <Link
+                  key={ticket.id}
+                  href={`/platform/tickets/${ticket.id}`}
+                  className="block bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-sm font-medium text-gray-900 flex-1 capitalize">
+                      {ticket.category || 'Ticket'}
+                    </h3>
+                    <span
+                      className={`ml-2 inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
+                        ticket.status
+                      )}`}
+                    >
+                      {ticket.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <p>Tenant: {ticket.tenant ? `${ticket.tenant.first_name} ${ticket.tenant.last_name}` : 'N/A'}</p>
+                    <p>Building: {ticket.object?.name || ticket.building?.name || ticket.tenant?.building_name || 'N/A'}</p>
+                    {ticket.urgency && (
+                      <p>Urgency: <span className="capitalize">{ticket.urgency}</span></p>
+                    )}
+                    {ticket.warranty_flag && (
+                      <p>Warranty: <span className="text-yellow-600 font-semibold">Flagged</span></p>
+                    )}
+                    <p>{new Date(ticket.created_at).toLocaleDateString()}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

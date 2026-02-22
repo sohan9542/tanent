@@ -16,6 +16,9 @@ export default function ObjectDetailPage() {
   const [error, setError] = useState(null)
   const [capmoProjectId, setCapmoProjectId] = useState('')
   const [capmoProjectName, setCapmoProjectName] = useState('')
+  const [handoffDelivery, setHandoffDelivery] = useState('email')
+  const [savingHandoff, setSavingHandoff] = useState(false)
+  const [handoffMessage, setHandoffMessage] = useState(null)
   const [savingCapmo, setSavingCapmo] = useState(false)
   const [capmoMessage, setCapmoMessage] = useState(null)
   const [testingCapmo, setTestingCapmo] = useState(false)
@@ -40,6 +43,7 @@ export default function ObjectDetailPage() {
         setObject(data.object)
         setCapmoProjectId(data.object?.capmo_project_id || '')
         setCapmoProjectName(data.object?.capmo_project_name || '')
+        setHandoffDelivery(data.object?.handoff_delivery === 'capmo' ? 'capmo' : 'email')
       } else {
         if (response.status === 401) {
           router.push('/platform/login')
@@ -51,6 +55,39 @@ export default function ObjectDetailPage() {
       setError(err.message || 'Failed to load object')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const saveHandoffDelivery = async () => {
+    if (handoffDelivery === 'capmo' && !capmoProjectId) {
+      setHandoffMessage({ type: 'error', text: 'Set a Capmo Project ID below before saving "Send via Capmo".' })
+      return
+    }
+    try {
+      setSavingHandoff(true)
+      setHandoffMessage(null)
+      const response = await fetch(`/api/platform/objects/${objectId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          capmo_project_id: capmoProjectId,
+          capmo_project_name: capmoProjectName,
+          handoff_delivery: handoffDelivery
+        })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setHandoffMessage({ type: 'error', text: data.error || 'Failed to save delivery method' })
+        return
+      }
+      setObject(data.object)
+      setHandoffMessage({ type: 'success', text: 'Delivery method saved' })
+      setTimeout(() => setHandoffMessage(null), 3000)
+    } catch (err) {
+      setHandoffMessage({ type: 'error', text: err.message || 'Failed to save' })
+    } finally {
+      setSavingHandoff(false)
     }
   }
 
@@ -67,7 +104,8 @@ export default function ObjectDetailPage() {
         },
         body: JSON.stringify({
           capmo_project_id: capmoProjectId,
-          capmo_project_name: capmoProjectName
+          capmo_project_name: capmoProjectName,
+          handoff_delivery: handoffDelivery
         })
       })
 
@@ -286,6 +324,49 @@ export default function ObjectDetailPage() {
             ) : (
               <p className="text-sm text-gray-500">No assignments configured. Click "Manage Assignments" to set up organizations.</p>
             )}
+          </div>
+        </div>
+
+        {/* Ticket handoff delivery – per object */}
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Ticket Handoff</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            When organization users pass this ticket between roles, how should handoff be delivered?
+          </p>
+          <div className="max-w-md">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Delivery method
+            </label>
+            <select
+              value={handoffDelivery}
+              onChange={(e) => setHandoffDelivery(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-4 pr-10 text-base text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="email">Send via Email</option>
+              <option value="capmo">Send via Capmo</option>
+            </select>
+            {handoffDelivery === 'capmo' && !capmoProjectId && (
+              <p className="mt-2 text-sm text-amber-600">
+                Set a Capmo Project ID below to save &quot;Send via Capmo&quot;.
+              </p>
+            )}
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={saveHandoffDelivery}
+                disabled={savingHandoff || (handoffDelivery === 'capmo' && !capmoProjectId)}
+                className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {savingHandoff ? 'Saving...' : 'Save'}
+              </button>
+              {handoffMessage && (
+                <span
+                  className={`text-sm ${handoffMessage.type === 'error' ? 'text-red-600' : 'text-green-600'}`}
+                >
+                  {handoffMessage.text}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { getCurrentStaffUser, canAccessTicket } from '@/lib/staff-auth'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 import Link from 'next/link'
+import TicketActions from './TicketActions'
 
 async function getTicket(id, staffUser, platformUser, legacyAdmin) {
   const { data: ticket, error } = await supabaseAdmin
@@ -114,6 +115,24 @@ export default async function AdminTicketDetailPage({ params }) {
                 className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Tickets
+              </Link>
+              <Link
+                href="/admin/locations"
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Locations
+              </Link>
+              <Link
+                href="/admin/branding"
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Branding
+              </Link>
+              <Link
+                href="/admin/settings"
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Settings
               </Link>
               <form action="/api/admin/auth/logout" method="POST">
                 <button
@@ -293,8 +312,17 @@ export default async function AdminTicketDetailPage({ params }) {
               </div>
             )}
 
+            {/* Ticket Actions - Status, Warranty Flag, Handoff, Activity Log */}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <TicketActions
+                ticketId={ticket.id}
+                initialStatus={ticket.status}
+                initialWarrantyFlag={ticket.warranty_flag || false}
+              />
+            </div>
+
             {/* Metadata */}
-            <div className="border-t border-gray-200 pt-6">
+            <div className="border-t border-gray-200 pt-6 mt-6">
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Created</dt>
@@ -313,6 +341,14 @@ export default async function AdminTicketDetailPage({ params }) {
                     <dt className="text-sm font-medium text-gray-500">Resolved</dt>
                     <dd className="mt-1 text-sm text-gray-900">
                       {new Date(ticket.resolved_at).toLocaleString()}
+                    </dd>
+                  </div>
+                )}
+                {ticket.capmo_ticket_id && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Capmo Ticket ID</dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {ticket.capmo_ticket_id}
                     </dd>
                   </div>
                 )}

@@ -44,6 +44,18 @@ export default async function PlatformLayout({ children }) {
           >
             Users
           </Link>
+          <Link
+            href="/platform/tickets"
+            className="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
+          >
+            Tickets
+          </Link>
+          <Link
+            href="/platform/locations"
+            className="block px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
+          >
+            Locations
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-gray-200 space-y-3">
