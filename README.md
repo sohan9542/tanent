@@ -14,30 +14,18 @@ A Next.js application for tenant and ticket management with Supabase backend, fe
 - **Role-Based Ticket Visibility**: Staff see tickets based on their object roles and organization assignments
 - **Dual Login System**: Separate login for platform admins (`/platform/login`) and organization users (`/org/login`)
 
-## Demo login (portfolio)
 
-Recruiters can use the documented demo accounts without a seeded Supabase user. Credentials are always shown on the login pages (even if the API is down).
+## Demo admin login
 
-| Role | URL | Email | Password |
-|------|-----|-------|----------|
-| Platform admin | `/platform/login` | `demo@tanent.app` | `Demo123!` |
-| Organization user | `/org/login` | `org-demo@tanent.app` | `Demo123!` |
+Platform admin: `/platform/login`  
+Email: `demo@tanent.app` · Password: `Demo123!`  
+Click **Fill demo** on the login page, then Sign in.
 
-How to try it:
+Seed the user once (needs Supabase env in `.env.local`):
 
-1. Open `/platform/login` (or start from `/login` and follow **Go to Platform Admin Login**).
-2. Click **Use demo account** to fill the form, then **Sign in** — or click **Preview offline demo**.
-3. If Supabase/auth fails, the same demo credentials still appear and you can enter a read-only demo session with sample organizations, objects, and tickets. Static fallback: `/platform/demo`.
-
-Optional env for fully offline local demos (no Supabase required):
-
-```env
-DEMO_MODE=true
-NEXT_PUBLIC_DEMO_MODE=true
-SESSION_SECRET=any-long-random-string
+```bash
+node scripts/seed-demo-admin.js
 ```
-
-Real Supabase auth continues to work when env is configured; demo mode is additive.
 
 ## Setup
 

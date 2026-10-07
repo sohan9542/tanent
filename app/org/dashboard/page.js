@@ -2,8 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentStaffUser } from '@/lib/staff-auth'
 import { getUserOrganizations } from '@/lib/staff-auth'
 import { getObjectsForOrganization } from '@/lib/object-auth'
-import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase/server'
-import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
+import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
 import LogoUpload from './logo-upload'
 import OrgLoginUrl from './org-login-url'
@@ -61,67 +60,32 @@ export default async function OrgDashboardPage() {
     )
   }
 
-  let objects = []
-  let stats = { objectCount: 0, ticketCount: 0, userCount: 0 }
-  let logoUrl = null
-  let isOrgAdmin = false
-  const isDemo = Boolean(staffUser.isDemo) || !isSupabaseConfigured()
+  const objects = await getObjectsForOrganization(primaryOrg.id)
+  const stats = await getOrganizationStats(primaryOrg.id)
 
-  if (isDemo) {
-    objects = DEMO_SAMPLE_DATA.objects
-      .filter(
-        (obj) =>
-          obj.assignment?.owner_org?.id === primaryOrg.id ||
-          obj.assignment?.tech_org?.id === primaryOrg.id ||
-          obj.assignment?.warranty_org?.id === primaryOrg.id
-      )
-      .map((obj) => ({
-        object_id: obj.id,
-        owner_org_id: obj.assignment?.owner_org?.id || null,
-        tech_org_id: obj.assignment?.tech_org?.id || null,
-        warranty_org_id: obj.assignment?.warranty_org?.id || null,
-        object: { id: obj.id, name: obj.name },
-      }))
-    stats = {
-      objectCount: objects.length,
-      ticketCount: DEMO_SAMPLE_DATA.tickets.length,
-      userCount: 1,
-    }
-    isOrgAdmin = staffUser.memberships?.some((m) => m.role === 'org_admin') || false
-  } else {
-    objects = await getObjectsForOrganization(primaryOrg.id)
-    stats = await getOrganizationStats(primaryOrg.id)
+  // Get organization logo URL
+  const { data: orgData } = await supabaseAdmin
+    .from('organizations')
+    .select('logo_url')
+    .eq('id', primaryOrg.id)
+    .single()
 
-    const { data: orgData } = await supabaseAdmin
-      .from('organizations')
-      .select('logo_url')
-      .eq('id', primaryOrg.id)
-      .single()
+  const logoUrl = orgData?.logo_url || null
 
-    logoUrl = orgData?.logo_url || null
+  // Check if user is org admin (can upload logo)
+  const { data: membership } = await supabaseAdmin
+    .from('organization_memberships')
+    .select('role')
+    .eq('user_id', staffUser.id)
+    .eq('organization_id', primaryOrg.id)
+    .single()
 
-    const { data: membership } = await supabaseAdmin
-      .from('organization_memberships')
-      .select('role')
-      .eq('user_id', staffUser.id)
-      .eq('organization_id', primaryOrg.id)
-      .single()
-
-    isOrgAdmin = membership?.role === 'org_admin'
-  }
+  const isOrgAdmin = membership?.role === 'org_admin'
 
   return (
     <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {isDemo && (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-900 font-medium">Demo / offline preview</p>
-              <p className="text-sm text-amber-800 mt-1">
-                Showing sample organization dashboard data for portfolio demos.
-              </p>
-            </div>
-          )}
-          {isOrgAdmin && !isDemo && (
+          {isOrgAdmin && (
             <>
               <LogoUpload organizationId={primaryOrg.id} currentLogoUrl={logoUrl} />
               <OrgLoginUrl organizationId={primaryOrg.id} />

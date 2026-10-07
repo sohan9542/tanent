@@ -1,23 +1,14 @@
 import { NextResponse } from 'next/server'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
-import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
-import { isSupabaseConfigured } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/server'
 
 /**
  * GET /api/platform/organizations - List all organizations
  */
 export async function GET() {
   try {
-    const user = await requirePlatformAdmin()
+    await requirePlatformAdmin()
 
-    if (user?.isDemo || !isSupabaseConfigured()) {
-      return NextResponse.json({
-        organizations: DEMO_SAMPLE_DATA.organizations,
-        demo: true,
-      })
-    }
-
-    const { supabaseAdmin } = await import('@/lib/supabase/server')
     const { data: organizations, error } = await supabaseAdmin
       .from('organizations')
       .select('*')
@@ -31,7 +22,7 @@ export async function GET() {
       organizations: organizations || []
     })
   } catch (error) {
-    if (error.message?.includes('redirect') || error.digest?.includes('NEXT_REDIRECT')) {
+    if (error.message?.includes('redirect')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -50,14 +41,7 @@ export async function GET() {
  */
 export async function POST(request) {
   try {
-    const user = await requirePlatformAdmin()
-
-    if (user?.isDemo) {
-      return NextResponse.json(
-        { error: 'Demo mode is read-only. Create/update actions are disabled.' },
-        { status: 403 }
-      )
-    }
+    await requirePlatformAdmin()
 
     const body = await request.json()
     const { name } = body
@@ -69,7 +53,6 @@ export async function POST(request) {
       )
     }
 
-    const { supabaseAdmin } = await import('@/lib/supabase/server')
     const { data: organization, error } = await supabaseAdmin
       .from('organizations')
       .insert({
@@ -87,7 +70,7 @@ export async function POST(request) {
       organization
     }, { status: 201 })
   } catch (error) {
-    if (error.message?.includes('redirect') || error.digest?.includes('NEXT_REDIRECT')) {
+    if (error.message?.includes('redirect')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

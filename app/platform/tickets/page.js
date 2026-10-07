@@ -1,25 +1,10 @@
 import { redirect } from 'next/navigation'
-import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/server'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
-import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 import Link from 'next/link'
 import TicketFilters from './TicketFilters'
 
 async function getTickets(platformUser, filters = {}) {
-  if (platformUser?.isDemo || !isSupabaseConfigured()) {
-    let tickets = DEMO_SAMPLE_DATA.tickets
-    if (filters.status && filters.status !== 'all') {
-      tickets = tickets.filter((t) => t.status === filters.status)
-    }
-    if (filters.category) {
-      tickets = tickets.filter((t) => t.category === filters.category)
-    }
-    if (filters.urgency) {
-      tickets = tickets.filter((t) => t.urgency === filters.urgency)
-    }
-    return { tickets, total: tickets.length, demo: true }
-  }
-
   let query = supabaseAdmin
     .from('tickets')
     .select(`
@@ -108,31 +93,17 @@ export default async function PlatformTicketsPage({ searchParams }) {
   }
 
   // Get locations for filter dropdown
-  let locations = []
-  if (platformUser?.isDemo || !isSupabaseConfigured()) {
-    locations = DEMO_SAMPLE_DATA.objects.map((o) => ({ id: o.id, name: o.name }))
-  } else {
-    const { data } = await supabaseAdmin
-      .from('objects')
-      .select('id, name')
-      .is('deleted_at', null)
-      .order('name', { ascending: true })
-    locations = data || []
-  }
+  const { data: locations } = await supabaseAdmin
+    .from('objects')
+    .select('id, name')
+    .is('deleted_at', null)
+    .order('name', { ascending: true })
 
   const data = await getTickets(platformUser, filters)
 
   return (
     <div className="p-6">
       <div className="bg-white shadow rounded-lg p-4 sm:p-6">
-        {data.demo && (
-          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
-            <p className="text-sm text-amber-900 font-medium">Demo / offline preview</p>
-            <p className="text-sm text-amber-800 mt-1">
-              Showing sample tickets so the portfolio UI stays usable without a live backend.
-            </p>
-          </div>
-        )}
         <div className="mb-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Tickets</h2>

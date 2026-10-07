@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
+import Link from 'next/link'
 import SiteFooter from '@/app/components/site-footer'
 import GoogleTranslateToggle from '@/app/components/google-translate-toggle'
+import { DEMO_PLATFORM_ADMIN } from '@/lib/demo-config'
 
 // reCAPTCHA bypass duration in milliseconds (30 minutes)
 const RECAPTCHA_BYPASS_DURATION = 30 * 60 * 1000
@@ -24,7 +26,6 @@ export default function LoginPage() {
 
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 
-  // Check if reCAPTCHA bypass is still valid on mount
   useEffect(() => {
     if (typeof window !== 'undefined' && siteKey) {
       const bypassTimestamp = localStorage.getItem(RECAPTCHA_BYPASS_KEY)
@@ -34,52 +35,39 @@ export default function LoginPage() {
         const timeElapsed = now - timestamp
         
         if (timeElapsed < RECAPTCHA_BYPASS_DURATION) {
-          // Bypass is still valid
           setRecaptchaBypassed(true)
-          setRecaptchaToken('bypassed') // Set a special token to indicate bypass
-          console.log('reCAPTCHA bypass is still active')
+          setRecaptchaToken('bypassed')
         } else {
-          // Bypass expired, remove it
           localStorage.removeItem(RECAPTCHA_BYPASS_KEY)
-          console.log('reCAPTCHA bypass expired')
         }
       }
     }
   }, [siteKey])
 
-  // Set up callbacks on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Callback for reCAPTCHA v2 when user completes the challenge
       window.recaptchaCallback = (token) => {
         setRecaptchaToken(token)
         setRecaptchaError('')
-        // Store bypass timestamp when reCAPTCHA is successfully completed
         if (typeof window !== 'undefined') {
           localStorage.setItem(RECAPTCHA_BYPASS_KEY, Date.now().toString())
           setRecaptchaBypassed(true)
         }
-        console.log('reCAPTCHA token received')
       }
 
-      // Callback for reCAPTCHA v2 when it expires
       window.recaptchaExpired = () => {
         setRecaptchaToken('')
         setRecaptchaBypassed(false)
-        console.log('reCAPTCHA token expired')
       }
 
-      // Callback for reCAPTCHA v2 errors
       window.recaptchaError = () => {
         setRecaptchaToken('')
         setRecaptchaBypassed(false)
         setRecaptchaError('reCAPTCHA error occurred')
-        console.error('reCAPTCHA error')
       }
     }
   }, [])
 
-  // Render reCAPTCHA when script loads and container is ready
   useEffect(() => {
     if (typeof window === 'undefined' || !siteKey || recaptchaBypassed || !recaptchaLoaded || recaptchaRendered.current) {
       return
@@ -110,36 +98,27 @@ export default function LoginPage() {
         recaptchaRendered.current = true
         return true
       } catch (error) {
-        console.error('Error rendering reCAPTCHA:', error)
         setRecaptchaError('Failed to render reCAPTCHA')
         return false
       }
     }
 
-    // Try to render immediately
     if (renderRecaptcha()) {
       return
     }
 
-    // Retry with increasing delays
     const timeouts = []
-    const delays = [200, 500, 1000, 2000]
-    
-    delays.forEach((delay) => {
-      const timeout = setTimeout(() => {
+    ;[200, 500, 1000, 2000].forEach((delay) => {
+      timeouts.push(setTimeout(() => {
         if (!recaptchaRendered.current) {
           renderRecaptcha()
         }
-      }, delay)
-      timeouts.push(timeout)
+      }, delay))
     })
 
-    return () => {
-      timeouts.forEach(clearTimeout)
-    }
+    return () => timeouts.forEach(clearTimeout)
   }, [siteKey, recaptchaBypassed, recaptchaLoaded])
 
-  // Reset rendered flag if bypassed
   useEffect(() => {
     if (recaptchaBypassed) {
       recaptchaRendered.current = false
@@ -151,15 +130,12 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    // For v2, check if reCAPTCHA is completed or bypassed
     if (siteKey && !recaptchaToken && !recaptchaBypassed) {
       setError('Please complete the reCAPTCHA verification')
       setLoading(false)
       return
     }
 
-    // If no site key configured, allow (dev mode)
-    // If bypassed, use a special token that the server will recognize
     const token = recaptchaBypassed ? 'bypassed' : (recaptchaToken || (siteKey ? '' : 'dev-token'))
 
     if (siteKey && !token && !recaptchaBypassed) {
@@ -171,9 +147,7 @@ export default function LoginPage() {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenantId: tenantId.trim(),
           lastName: lastName.trim(),
@@ -189,11 +163,9 @@ export default function LoginPage() {
         return
       }
 
-      // Success - redirect to dashboard
       router.push('/dashboard')
       router.refresh()
     } catch (err) {
-      console.error('Login error:', err)
       setError('An error occurred. Please try again.')
       setLoading(false)
     }
@@ -201,7 +173,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 relative">
-      {/* Google Translate Toggle - Top Right */}
       <div className="absolute top-4 right-4">
         <GoogleTranslateToggle />
       </div>
@@ -215,25 +186,21 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4 space-y-2">
-          <p className="text-sm font-semibold text-indigo-900">Looking for the admin demo?</p>
-          <p className="text-xs text-indigo-800">
-            Platform admin portfolio login shows demo credentials and works even when the backend is unavailable.
+        <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4 space-y-2 text-sm">
+          <p className="font-semibold text-indigo-900">Admin demo</p>
+          <p className="text-indigo-800">
+            Email: <code>{DEMO_PLATFORM_ADMIN.email}</code> · Password:{' '}
+            <code>{DEMO_PLATFORM_ADMIN.password}</code>
           </p>
-          <a
-            href="/platform/login"
-            className="inline-flex text-sm font-medium text-indigo-700 hover:text-indigo-900 underline"
-          >
-            Go to Platform Admin Login →
-          </a>
+          <Link href="/platform/login" className="text-indigo-700 hover:text-indigo-900 font-medium underline">
+            Platform Admin Login →
+          </Link>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="tenant-id" className="sr-only">
-                Tenant ID
-              </label>
+              <label htmlFor="tenant-id" className="sr-only">Tenant ID</label>
               <input
                 id="tenant-id"
                 name="tenantId"
@@ -247,9 +214,7 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label htmlFor="last-name" className="sr-only">
-                Last Name
-              </label>
+              <label htmlFor="last-name" className="sr-only">Last Name</label>
               <input
                 id="last-name"
                 name="lastName"
@@ -270,7 +235,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* reCAPTCHA v2 checkbox - only show if not bypassed */}
           {siteKey && !recaptchaBypassed && (
             <div className="flex justify-center">
               <div id="recaptcha-container"></div>
@@ -303,23 +267,19 @@ export default function LoginPage() {
         <Script
           src="https://www.google.com/recaptcha/api.js?render=explicit"
           onLoad={() => {
-            // Wait for grecaptcha to be fully initialized
             const checkGrecaptcha = (attempt = 0) => {
               if (window.grecaptcha && window.grecaptcha.render) {
                 setRecaptchaLoaded(true)
               } else if (attempt < 20) {
-                // Retry up to 20 times (4 seconds total)
                 setTimeout(() => checkGrecaptcha(attempt + 1), 200)
               } else {
                 setRecaptchaError('reCAPTCHA API not available. Please refresh the page.')
-                console.error('grecaptcha not available after script load')
               }
             }
             checkGrecaptcha()
           }}
           onError={() => {
             setRecaptchaError('Failed to load reCAPTCHA script. Please check your internet connection.')
-            console.error('reCAPTCHA script failed to load')
           }}
           strategy="afterInteractive"
         />
@@ -328,5 +288,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
-

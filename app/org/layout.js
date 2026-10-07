@@ -27,11 +27,6 @@ export default async function OrgLayout({ children }) {
           </Link>
           <p className="text-xs text-gray-500 mt-1">{staffUser.name}</p>
           <p className="text-xs text-gray-400">{staffUser.email}</p>
-          {staffUser.isDemo && (
-            <p className="mt-2 inline-block text-[11px] font-medium uppercase tracking-wide text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-              Demo session
-            </p>
-          )}
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

@@ -1,26 +1,22 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/server'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
 import { createClient } from '@supabase/supabase-js'
-import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Create admin client for auth operations (only when configured)
-const supabaseAdminClient = isSupabaseConfigured()
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-  : null
+// Create admin client for auth operations
+const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 
 export async function GET(request) {
-  let user
   try {
-    user = await requirePlatformAdmin()
+    await requirePlatformAdmin()
   } catch {
     return NextResponse.json(
       { error: 'Unauthorized' },
@@ -34,25 +30,6 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
-
-    if (user?.isDemo || !isSupabaseConfigured()) {
-      let users = DEMO_SAMPLE_DATA.users
-      if (search) {
-        const q = search.toLowerCase()
-        users = users.filter(
-          (u) =>
-            u.email.toLowerCase().includes(q) ||
-            (u.name || '').toLowerCase().includes(q)
-        )
-      }
-      return NextResponse.json({
-        users: users.slice(offset, offset + limit),
-        total: users.length,
-        page,
-        limit,
-        demo: true,
-      })
-    }
 
     let query = supabaseAdmin
       .from('platform_users')
@@ -92,20 +69,12 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  let user
   try {
-    user = await requirePlatformAdmin()
+    await requirePlatformAdmin()
   } catch {
     return NextResponse.json(
       { success: false, error: 'Unauthorized' },
       { status: 401 }
-    )
-  }
-
-  if (user?.isDemo) {
-    return NextResponse.json(
-      { success: false, error: 'Demo mode is read-only. Create/update actions are disabled.' },
-      { status: 403 }
     )
   }
 
