@@ -1,22 +1,20 @@
 import { redirect } from 'next/navigation'
-import { getCurrentStaffUser } from '@/lib/staff-auth'
-import { getUserOrganizations } from '@/lib/staff-auth'
+import { getCurrentStaffUser, getUserOrganizations } from '@/lib/staff-auth'
 import { getObjectsForOrganization } from '@/lib/object-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 import Link from 'next/link'
 import LogoUpload from './logo-upload'
 import OrgLoginUrl from './org-login-url'
 
 async function getOrganizationStats(organizationId) {
-  // Get objects where org is assigned
   const { data: assignments } = await supabaseAdmin
     .from('object_assignments')
     .select('object_id')
     .or(`owner_org_id.eq.${organizationId},tech_org_id.eq.${organizationId},warranty_org_id.eq.${organizationId}`)
 
-  const objectIds = assignments?.map(a => a.object_id) || []
+  const objectIds = assignments?.map((a) => a.object_id) || []
 
-  // Get ticket count for these objects
   let ticketCount = 0
   if (objectIds.length > 0) {
     const { count } = await supabaseAdmin
@@ -26,7 +24,6 @@ async function getOrganizationStats(organizationId) {
     ticketCount = count || 0
   }
 
-  // Get user count in organization
   const { count: userCount } = await supabaseAdmin
     .from('organization_memberships')
     .select('*', { count: 'exact', head: true })
@@ -35,7 +32,7 @@ async function getOrganizationStats(organizationId) {
   return {
     objectCount: objectIds.length,
     ticketCount,
-    userCount: userCount || 0
+    userCount: userCount || 0,
   }
 }
 
@@ -60,97 +57,140 @@ export default async function OrgDashboardPage() {
     )
   }
 
-  const objects = await getObjectsForOrganization(primaryOrg.id)
-  const stats = await getOrganizationStats(primaryOrg.id)
+  let objects = []
+  let stats = { objectCount: 0, ticketCount: 0, userCount: 0 }
+  let logoUrl = null
+  let isOrgAdmin = false
+  const isDemo = Boolean(staffUser.isStaticDemo)
 
-  // Get organization logo URL
-  const { data: orgData } = await supabaseAdmin
-    .from('organizations')
-    .select('logo_url')
-    .eq('id', primaryOrg.id)
-    .single()
+  if (isDemo) {
+    objects = DEMO_SAMPLE_DATA.objects
+      .filter(
+        (obj) =>
+          obj.assignment?.[0]?.owner_org?.id === primaryOrg.id ||
+          obj.assignment?.[0]?.tech_org?.id === primaryOrg.id ||
+          obj.assignment?.[0]?.warranty_org?.id === primaryOrg.id
+      )
+      .map((obj) => ({
+        object_id: obj.id,
+        owner_org_id: obj.assignment?.[0]?.owner_org?.id || null,
+        tech_org_id: obj.assignment?.[0]?.tech_org?.id || null,
+        warranty_org_id: obj.assignment?.[0]?.warranty_org?.id || null,
+        object: { id: obj.id, name: obj.name },
+      }))
+    stats = {
+      objectCount: objects.length,
+      ticketCount: DEMO_SAMPLE_DATA.tickets.length,
+      userCount: DEMO_SAMPLE_DATA.users.filter((u) =>
+        u.memberships?.some((m) => m.organization?.id === primaryOrg.id)
+      ).length,
+    }
+    isOrgAdmin = staffUser.memberships?.some((m) => m.role === 'org_admin') || false
+  } else {
+    objects = await getObjectsForOrganization(primaryOrg.id)
+    stats = await getOrganizationStats(primaryOrg.id)
 
-  const logoUrl = orgData?.logo_url || null
+    const { data: orgData } = await supabaseAdmin
+      .from('organizations')
+      .select('logo_url')
+      .eq('id', primaryOrg.id)
+      .single()
 
-  // Check if user is org admin (can upload logo)
-  const { data: membership } = await supabaseAdmin
-    .from('organization_memberships')
-    .select('role')
-    .eq('user_id', staffUser.id)
-    .eq('organization_id', primaryOrg.id)
-    .single()
+    logoUrl = orgData?.logo_url || null
 
-  const isOrgAdmin = membership?.role === 'org_admin'
+    const { data: membership } = await supabaseAdmin
+      .from('organization_memberships')
+      .select('role')
+      .eq('user_id', staffUser.id)
+      .eq('organization_id', primaryOrg.id)
+      .single()
+
+    isOrgAdmin = membership?.role === 'org_admin'
+  }
 
   return (
     <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {isOrgAdmin && (
-            <>
-              <LogoUpload organizationId={primaryOrg.id} currentLogoUrl={logoUrl} />
-              <OrgLoginUrl organizationId={primaryOrg.id} />
-            </>
-          )}
-          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
-              {primaryOrg.name}
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              Organization Dashboard
+      <div className="px-4 py-6 sm:px-0">
+        {isDemo && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-sm text-amber-900 font-medium">Demo session</p>
+            <p className="text-sm text-amber-800 mt-1">
+              Showing static sample organization data (no database).
             </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.objectCount}</div>
-                <div className="text-sm text-gray-600">Objects Assigned</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.ticketCount}</div>
-                <div className="text-sm text-gray-600">Total Tickets</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.userCount}</div>
-                <div className="text-sm text-gray-600">Organization Users</div>
-              </div>
-            </div>
           </div>
+        )}
+        {isOrgAdmin && !isDemo && (
+          <>
+            <LogoUpload organizationId={primaryOrg.id} currentLogoUrl={logoUrl} />
+            <OrgLoginUrl organizationId={primaryOrg.id} />
+          </>
+        )}
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
+            {primaryOrg.name}
+          </h2>
+          <p className="text-sm text-gray-600 mb-6">Organization Dashboard</p>
 
-          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Assigned Objects</h3>
-              <Link
-                href="/org/objects"
-                className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-              >
-                View All →
-              </Link>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{stats.objectCount}</div>
+              <div className="text-sm text-gray-600">Objects Assigned</div>
             </div>
-
-            {objects.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                No objects assigned to this organization yet.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {objects.slice(0, 5).map((assignment) => (
-                  <div key={assignment.object_id} className="p-3 bg-gray-50 rounded-md">
-                    <div className="font-medium text-gray-900">{assignment.object?.name}</div>
-                    <div className="text-sm text-gray-600">
-                      {assignment.owner_org_id === primaryOrg.id && 'Owner • '}
-                      {assignment.tech_org_id === primaryOrg.id && 'Technical • '}
-                      {assignment.warranty_org_id === primaryOrg.id && 'Warranty'}
-                    </div>
-                  </div>
-                ))}
-                {objects.length > 5 && (
-                  <p className="text-sm text-gray-500 text-center pt-2">
-                    + {objects.length - 5} more objects
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{stats.ticketCount}</div>
+              <div className="text-sm text-gray-600">Total Tickets</div>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{stats.userCount}</div>
+              <div className="text-sm text-gray-600">Organization Users</div>
+            </div>
           </div>
         </div>
-      </main>
+
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Assigned Objects</h3>
+            <Link
+              href="/org/objects"
+              className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+            >
+              View All →
+            </Link>
+          </div>
+
+          {objects.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">
+              No objects assigned to this organization yet.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {objects.slice(0, 5).map((assignment) => (
+                <div key={assignment.object_id} className="p-3 bg-gray-50 rounded-md">
+                  <div className="font-medium text-gray-900">
+                    {assignment.object?.name}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {assignment.owner_org_id === primaryOrg.id && 'Owner • '}
+                    {assignment.tech_org_id === primaryOrg.id && 'Technical • '}
+                    {assignment.warranty_org_id === primaryOrg.id && 'Warranty'}
+                  </div>
+                </div>
+              ))}
+              {objects.length > 5 && (
+                <p className="text-sm text-gray-500 text-center pt-2">
+                  + {objects.length - 5} more objects
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
   )
+}
+
+function DEMO_ORG_USER_COUNT(orgId) {
+  return DEMO_SAMPLE_DATA.users.filter((u) =>
+    u.memberships?.some((m) => m.organization?.id === orgId)
+  ).length
 }

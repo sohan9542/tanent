@@ -9,9 +9,10 @@ Works even when Supabase is down. No seeding required.
 | Page | Credentials | Action |
 |------|-------------|--------|
 | `/login` | Tenant ID `DEMO-001` · Last Name `Demo` | **Fill demo** → Sign in |
+| `/org/login` | `org-demo@tanent.app` / `Demo123!` | **Fill demo** → Sign in |
 | `/platform/login` | `demo@tanent.app` / `Demo123!` | **Fill demo** → Sign in |
 
-reCAPTCHA is always bypassed on tenant login.
+Static cookie session — no database. reCAPTCHA is always bypassed on tenant login.
 
 ## Features (Milestone 2)
 

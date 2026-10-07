@@ -125,9 +125,12 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center">
-            <Link href="/platform/login" className="text-sm text-indigo-600 hover:text-indigo-900">
+          <div className="text-center space-y-2">
+            <Link href="/platform/login" className="block text-sm text-indigo-600 hover:text-indigo-900">
               Platform Admin Login →
+            </Link>
+            <Link href="/org/login" className="block text-sm text-gray-500 hover:text-gray-700">
+              Organization Login →
             </Link>
           </div>
         </form>

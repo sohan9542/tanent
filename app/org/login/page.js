@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import SiteFooter from '@/app/components/site-footer'
+import DemoCredentialsPanel from '@/app/components/demo-credentials-panel'
+import { DEMO_ORG_USER } from '@/lib/demo-config'
 
 function OrgLoginForm() {
   const router = useRouter()
@@ -13,46 +15,40 @@ function OrgLoginForm() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState(null)
-  const [loadingLogo, setLoadingLogo] = useState(false)
 
-  // Fetch logo if organization ID is provided
   useEffect(() => {
     const orgId = searchParams.get('id')
-    if (orgId) {
-      setLoadingLogo(true)
-      fetch(`/api/org/logo/get?id=${orgId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.logoUrl) {
-            setLogoUrl(data.logoUrl)
-          }
-        })
-        .catch(err => {
-          console.error('Failed to load logo:', err)
-        })
-        .finally(() => {
-          setLoadingLogo(false)
-        })
-    }
+    if (!orgId) return
+    fetch(`/api/org/logo/get?id=${orgId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.logoUrl) setLogoUrl(data.logoUrl)
+      })
+      .catch(() => {})
   }, [searchParams])
 
-  // Redirect if already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/org/auth/check', { 
+        const response = await fetch('/api/org/auth/check', {
           method: 'GET',
-          credentials: 'include' // Include cookies
+          credentials: 'include',
         })
         if (response.ok) {
           router.push('/org/dashboard')
         }
-      } catch (err) {
-        // Not logged in, stay on login page
+      } catch {
+        // stay on login — demo credentials remain visible
       }
     }
     checkAuth()
   }, [router])
+
+  const fillDemo = () => {
+    setEmail(DEMO_ORG_USER.email)
+    setPassword(DEMO_ORG_USER.password)
+    setError('')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -62,17 +58,15 @@ function OrgLoginForm() {
     try {
       const response = await fetch('/api/org/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies in request/response
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email: email.trim(),
-          password: password
+          password,
         }),
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         setError(data.error || 'Login failed')
@@ -80,11 +74,9 @@ function OrgLoginForm() {
         return
       }
 
-      // Success - redirect to organization dashboard
       router.push('/org/dashboard')
       router.refresh()
-    } catch (err) {
-      console.error('Login error:', err)
+    } catch {
       setError('An error occurred. Please try again.')
       setLoading(false)
     }
@@ -110,12 +102,20 @@ function OrgLoginForm() {
             Sign in to access your organization dashboard
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        <DemoCredentialsPanel
+          title="Demo credentials"
+          fields={[
+            { label: 'Email', value: DEMO_ORG_USER.email },
+            { label: 'Password', value: DEMO_ORG_USER.password },
+          ]}
+          onFill={fillDemo}
+        />
+
+        <form className="mt-2 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
+              <label htmlFor="email" className="sr-only">Email</label>
               <input
                 id="email"
                 name="email"
@@ -129,9 +129,7 @@ function OrgLoginForm() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
+              <label htmlFor="password" className="sr-only">Password</label>
               <input
                 id="password"
                 name="password"
@@ -162,12 +160,18 @@ function OrgLoginForm() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <Link
               href="/platform/login"
-              className="text-sm text-indigo-600 hover:text-indigo-900"
+              className="block text-sm text-indigo-600 hover:text-indigo-900"
             >
               Platform Admin Login →
+            </Link>
+            <Link
+              href="/login"
+              className="block text-sm text-gray-500 hover:text-gray-700"
+            >
+              Tenant Login →
             </Link>
           </div>
         </form>
@@ -179,13 +183,24 @@ function OrgLoginForm() {
 
 export default function OrgLoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Loading...</h2>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+          <div className="max-w-md w-full space-y-4 text-center">
+            <h2 className="text-2xl font-bold text-gray-900">Organization Login</h2>
+            <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4 text-left text-sm">
+              <p className="font-semibold text-indigo-900">Demo credentials</p>
+              <p className="mt-2 text-indigo-800">
+                Email: <code>{DEMO_ORG_USER.email}</code>
+              </p>
+              <p className="text-indigo-800">
+                Password: <code>{DEMO_ORG_USER.password}</code>
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <OrgLoginForm />
     </Suspense>
   )
