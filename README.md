@@ -2,6 +2,17 @@
 
 A Next.js application for tenant and ticket management with Supabase backend, featuring guided defect reporting, AI-assisted follow-ups, and role-based ticket visibility.
 
+## Demo login (static — no database)
+
+Works even when Supabase is down. No seeding required.
+
+| Page | Credentials | Action |
+|------|-------------|--------|
+| `/login` | Tenant ID `DEMO-001` · Last Name `Demo` | **Fill demo** → Sign in |
+| `/platform/login` | `demo@tanent.app` / `Demo123!` | **Fill demo** → Sign in |
+
+reCAPTCHA is always bypassed on tenant login.
+
 ## Features (Milestone 2)
 
 - **Guided Defect Reporting Wizard**: Multi-step form for tenants to report defects with category, location, description, urgency, and image uploads
@@ -13,20 +24,6 @@ A Next.js application for tenant and ticket management with Supabase backend, fe
 - **Organization Admin**: Manage organization users and assign object roles
 - **Role-Based Ticket Visibility**: Staff see tickets based on their object roles and organization assignments
 - **Dual Login System**: Separate login for platform admins (`/platform/login`) and organization users (`/org/login`)
-
-## Demo login
-
-**Tenant** (`/login`): Tenant ID `DEMO-001` · Last Name `Demo` — click **Fill demo**.  
-**Platform admin** (`/platform/login`): `demo@tanent.app` / `Demo123!` — click **Fill demo**.
-
-Seed once (needs `.env.local` Supabase keys):
-
-```bash
-node scripts/seed-demo-tenant.js
-node scripts/seed-demo-admin.js
-```
-
-reCAPTCHA is always bypassed on tenant login.
 
 ## Setup
 
@@ -148,5 +145,3 @@ Images are stored in Supabase Storage bucket `ticket-images`. Make sure the buck
 - Staff authentication uses Supabase Auth (implementation can be extended)
 - Role-based access is enforced at the application layer
 - All image uploads are validated server-side
-
-

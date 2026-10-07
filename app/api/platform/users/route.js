@@ -15,8 +15,9 @@ const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey, {
 })
 
 export async function GET(request) {
+  let user
   try {
-    await requirePlatformAdmin()
+    user = await requirePlatformAdmin()
   } catch {
     return NextResponse.json(
       { error: 'Unauthorized' },
@@ -30,6 +31,16 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
+
+    if (user?.isStaticDemo) {
+      return NextResponse.json({
+        users: [],
+        total: 0,
+        page,
+        limit,
+        demo: true,
+      })
+    }
 
     let query = supabaseAdmin
       .from('platform_users')
