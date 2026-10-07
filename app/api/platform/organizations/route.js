@@ -7,7 +7,12 @@ import { supabaseAdmin } from '@/lib/supabase/server'
  */
 export async function GET() {
   try {
-    await requirePlatformAdmin()
+    const user = await requirePlatformAdmin()
+
+    // Static demo session — no DB
+    if (user?.isStaticDemo) {
+      return NextResponse.json({ organizations: [], demo: true })
+    }
 
     const { data: organizations, error } = await supabaseAdmin
       .from('organizations')
@@ -22,7 +27,7 @@ export async function GET() {
       organizations: organizations || []
     })
   } catch (error) {
-    if (error.message?.includes('redirect')) {
+    if (error.message?.includes('redirect') || error.digest?.includes('NEXT_REDIRECT')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

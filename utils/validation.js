@@ -40,9 +40,7 @@ export function validateLogin(data) {
     errors.push('Last name is required')
   }
 
-  if (!data.recaptchaToken) {
-    errors.push('reCAPTCHA verification is required')
-  }
+  // reCAPTCHA is always bypassed for this app — token not required
 
   return {
     isValid: errors.length === 0,

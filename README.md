@@ -14,6 +14,20 @@ A Next.js application for tenant and ticket management with Supabase backend, fe
 - **Role-Based Ticket Visibility**: Staff see tickets based on their object roles and organization assignments
 - **Dual Login System**: Separate login for platform admins (`/platform/login`) and organization users (`/org/login`)
 
+## Demo login
+
+**Tenant** (`/login`): Tenant ID `DEMO-001` · Last Name `Demo` — click **Fill demo**.  
+**Platform admin** (`/platform/login`): `demo@tanent.app` / `Demo123!` — click **Fill demo**.
+
+Seed once (needs `.env.local` Supabase keys):
+
+```bash
+node scripts/seed-demo-tenant.js
+node scripts/seed-demo-admin.js
+```
+
+reCAPTCHA is always bypassed on tenant login.
+
 ## Setup
 
 1. Install dependencies:

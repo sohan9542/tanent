@@ -7,7 +7,11 @@ import { supabaseAdmin } from '@/lib/supabase/server'
  */
 export async function GET() {
   try {
-    await requirePlatformAdmin()
+    const user = await requirePlatformAdmin()
+
+    if (user?.isStaticDemo) {
+      return NextResponse.json({ objects: [], demo: true })
+    }
 
     const { data: objects, error } = await supabaseAdmin
       .from('objects')

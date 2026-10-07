@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SiteFooter from '@/app/components/site-footer'
+import DemoCredentialsPanel from '@/app/components/demo-credentials-panel'
+import { DEMO_PLATFORM_ADMIN } from '@/lib/demo-config'
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
 export default function PlatformLoginPage() {
@@ -15,23 +16,28 @@ export default function PlatformLoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Redirect if already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/platform/auth/check', { 
+        const response = await fetch('/api/platform/auth/check', {
           method: 'GET',
-          credentials: 'include' // Include cookies
+          credentials: 'include',
         })
         if (response.ok) {
           router.push('/platform/organizations')
         }
-      } catch (err) {
-        // Not logged in, stay on login page
+      } catch {
+        // stay on login
       }
     }
     checkAuth()
   }, [router])
+
+  const fillDemo = () => {
+    setEmail(DEMO_PLATFORM_ADMIN.email)
+    setPassword(DEMO_PLATFORM_ADMIN.password)
+    setError('')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -41,13 +47,11 @@ export default function PlatformLoginPage() {
     try {
       const response = await fetch('/api/platform/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies in request/response
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email: email.trim(),
-          password: password
+          password,
         }),
       })
 
@@ -59,13 +63,11 @@ export default function PlatformLoginPage() {
         return
       }
 
-      // Success - wait a moment for cookies to be set, then redirect
       setTimeout(() => {
         router.push('/platform/organizations')
         router.refresh()
       }, 100)
-    } catch (err) {
-      console.error('Login error:', err)
+    } catch {
       setError('An error occurred. Please try again.')
       setLoading(false)
     }
@@ -82,12 +84,20 @@ export default function PlatformLoginPage() {
             Sign in to manage the platform
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        <DemoCredentialsPanel
+          title="Demo credentials"
+          fields={[
+            { label: 'Email', value: DEMO_PLATFORM_ADMIN.email },
+            { label: 'Password', value: DEMO_PLATFORM_ADMIN.password },
+          ]}
+          onFill={fillDemo}
+        />
+
+        <form className="mt-2 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
+              <label htmlFor="email" className="sr-only">Email</label>
               <input
                 id="email"
                 name="email"
@@ -101,9 +111,7 @@ export default function PlatformLoginPage() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
+              <label htmlFor="password" className="sr-only">Password</label>
               <input
                 id="password"
                 name="password"
@@ -135,10 +143,7 @@ export default function PlatformLoginPage() {
           </div>
 
           <div className="text-center">
-            <Link
-              href="/org/login"
-              className="text-sm text-indigo-600 hover:text-indigo-900"
-            >
+            <Link href="/org/login" className="text-sm text-indigo-600 hover:text-indigo-900">
               Organization Login →
             </Link>
           </div>

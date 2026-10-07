@@ -1,13 +1,41 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { supabaseAdmin } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import {
+  DEMO_PLATFORM_ADMIN,
+  isDemoPlatformCredentials,
+} from '@/lib/demo-config'
+import {
+  DEMO_COOKIE,
+  createStaticDemoToken,
+  demoCookieOptions,
+} from '@/lib/demo-session'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+function staticDemoLoginResponse() {
+  const response = NextResponse.json({
+    success: true,
+    demo: true,
+    user: {
+      id: DEMO_PLATFORM_ADMIN.id,
+      email: DEMO_PLATFORM_ADMIN.email,
+      name: DEMO_PLATFORM_ADMIN.name,
+      role: DEMO_PLATFORM_ADMIN.role,
+    },
+  })
+  response.cookies.set(
+    DEMO_COOKIE,
+    createStaticDemoToken('platform'),
+    demoCookieOptions()
+  )
+  return response
+}
+
 /**
- * POST /api/platform/auth/login - Platform admin/staff login via Supabase Auth
+ * POST /api/platform/auth/login
+ * Static demo credentials succeed with zero DB/Supabase calls.
  */
 export async function POST(request) {
   try {
@@ -21,12 +49,22 @@ export async function POST(request) {
       )
     }
 
-    // Create server client with cookie handling
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
+    // Portfolio demo — no Supabase, no database
+    if (isDemoPlatformCredentials(email, password)) {
+      return staticDemoLoginResponse()
+    }
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      )
+    }
+
+    try {
+      const { supabaseAdmin } = await import('@/lib/supabase/server')
+      const cookieStore = await cookies()
+      const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
         cookies: {
           get(name) {
             return cookieStore.get(name)?.value
@@ -38,75 +76,80 @@ export async function POST(request) {
             cookieStore.set(name, '', options)
           },
         },
+      })
+
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        })
+
+      if (authError || !authData.user) {
+        return NextResponse.json(
+          { error: 'Invalid email or password' },
+          { status: 401 }
+        )
       }
-    )
 
-    // Sign in with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: password
-    })
+      const { data: platformUser, error: userError } = await supabaseAdmin
+        .from('platform_users')
+        .select('*')
+        .eq('auth_user_id', authData.user.id)
+        .eq('is_active', true)
+        .single()
 
-    if (authError || !authData.user) {
+      if (userError || !platformUser) {
+        await supabase.auth.signOut()
+        return NextResponse.json(
+          {
+            error:
+              'Access denied. This account is not authorized for platform access.',
+          },
+          { status: 403 }
+        )
+      }
+
+      if (
+        platformUser.role !== 'platform_admin' &&
+        platformUser.role !== 'platform_staff'
+      ) {
+        await supabase.auth.signOut()
+        return NextResponse.json(
+          {
+            error:
+              'Access denied. This account is not authorized for platform access.',
+          },
+          { status: 403 }
+        )
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (session) {
+        return NextResponse.json({
+          success: true,
+          user: {
+            id: platformUser.id,
+            email: platformUser.email,
+            name: platformUser.name,
+            role: platformUser.role,
+          },
+        })
+      }
+
+      return NextResponse.json(
+        { error: 'Failed to create session' },
+        { status: 500 }
+      )
+    } catch (err) {
+      console.error('Platform login Supabase error:', err)
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
-
-    // Verify user is a platform user (platform_admin or platform_staff)
-    const { data: platformUser, error: userError } = await supabaseAdmin
-      .from('platform_users')
-      .select('*')
-      .eq('auth_user_id', authData.user.id)
-      .eq('is_active', true)
-      .single()
-
-    if (userError || !platformUser) {
-      // Sign out from Supabase Auth if not a platform user
-      await supabase.auth.signOut()
-      return NextResponse.json(
-        { error: 'Access denied. This account is not authorized for platform access.' },
-        { status: 403 }
-      )
-    }
-
-    // Check if user has platform role
-    if (platformUser.role !== 'platform_admin' && platformUser.role !== 'platform_staff') {
-      await supabase.auth.signOut()
-      return NextResponse.json(
-        { error: 'Access denied. This account is not authorized for platform access.' },
-        { status: 403 }
-      )
-    }
-
-    // Get session to verify it was set
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError) {
-      console.error('Session error:', sessionError)
-    }
-    
-    if (session) {
-      // Create response with cookies set
-      const response = NextResponse.json({
-        success: true,
-        user: {
-          id: platformUser.id,
-          email: platformUser.email,
-          name: platformUser.name,
-          role: platformUser.role
-        }
-      })
-
-      return response
-    }
-
-    console.error('No session after login - authData:', { user: authData.user?.id, session })
-    return NextResponse.json(
-      { error: 'Failed to create session' },
-      { status: 500 }
-    )
   } catch (error) {
     console.error('Platform login error:', error)
     return NextResponse.json(
