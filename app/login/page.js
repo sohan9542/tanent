@@ -214,6 +214,20 @@ export default function LoginPage() {
             Enter your Tenant ID and Last Name
           </p>
         </div>
+
+        <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4 space-y-2">
+          <p className="text-sm font-semibold text-indigo-900">Looking for the admin demo?</p>
+          <p className="text-xs text-indigo-800">
+            Platform admin portfolio login shows demo credentials and works even when the backend is unavailable.
+          </p>
+          <a
+            href="/platform/login"
+            className="inline-flex text-sm font-medium text-indigo-700 hover:text-indigo-900 underline"
+          >
+            Go to Platform Admin Login →
+          </a>
+        </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>

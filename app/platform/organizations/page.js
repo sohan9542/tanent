@@ -11,6 +11,7 @@ export default function PlatformOrganizationsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState(null)
+  const [demoMode, setDemoMode] = useState(false)
 
   useEffect(() => {
     fetchOrganizations()
@@ -25,6 +26,7 @@ export default function PlatformOrganizationsPage() {
 
       if (response.ok) {
         setOrganizations(data.organizations || [])
+        setDemoMode(Boolean(data.demo))
       } else {
         if (response.status === 401) {
           router.push('/platform/login')
@@ -88,6 +90,15 @@ export default function PlatformOrganizationsPage() {
               Create Organization
             </Link>
           </div>
+
+          {demoMode && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-900 font-medium">Demo / offline preview</p>
+              <p className="text-sm text-amber-800 mt-1">
+                Showing sample organizations. Mutations are disabled while the live auth backend is unavailable.
+              </p>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">

@@ -1,13 +1,24 @@
 import { NextResponse } from 'next/server'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
-import { supabaseAdmin } from '@/lib/supabase/server'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
+import { isSupabaseConfigured, supabaseAdmin } from '@/lib/supabase/server'
 
 /**
  * GET /api/platform/objects - List all objects
  */
 export async function GET() {
   try {
-    await requirePlatformAdmin()
+    const user = await requirePlatformAdmin()
+
+    if (user?.isDemo || !isSupabaseConfigured()) {
+      return NextResponse.json({
+        objects: DEMO_SAMPLE_DATA.objects.map((obj) => ({
+          ...obj,
+          assignment: obj.assignment ? [obj.assignment] : [],
+        })),
+        demo: true,
+      })
+    }
 
     const { data: objects, error } = await supabaseAdmin
       .from('objects')
@@ -67,7 +78,14 @@ export async function GET() {
  */
 export async function POST(request) {
   try {
-    await requirePlatformAdmin()
+    const user = await requirePlatformAdmin()
+
+    if (user?.isDemo) {
+      return NextResponse.json(
+        { error: 'Demo mode is read-only. Create/update actions are disabled.' },
+        { status: 403 }
+      )
+    }
 
     const body = await request.json()
     const { object_id, name, street, zip, city, address } = body
