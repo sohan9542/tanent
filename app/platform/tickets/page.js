@@ -1,10 +1,25 @@
 import { redirect } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 import Link from 'next/link'
 import TicketFilters from './TicketFilters'
 
 async function getTickets(platformUser, filters = {}) {
+  if (platformUser?.isStaticDemo) {
+    let tickets = DEMO_SAMPLE_DATA.tickets
+    if (filters.status && filters.status !== 'all') {
+      tickets = tickets.filter((t) => t.status === filters.status)
+    }
+    if (filters.category) {
+      tickets = tickets.filter((t) => t.category === filters.category)
+    }
+    if (filters.urgency) {
+      tickets = tickets.filter((t) => t.urgency === filters.urgency)
+    }
+    return { tickets, total: tickets.length, demo: true }
+  }
+
   let query = supabaseAdmin
     .from('tickets')
     .select(`
@@ -93,11 +108,17 @@ export default async function PlatformTicketsPage({ searchParams }) {
   }
 
   // Get locations for filter dropdown
-  const { data: locations } = await supabaseAdmin
-    .from('objects')
-    .select('id, name')
-    .is('deleted_at', null)
-    .order('name', { ascending: true })
+  let locations = []
+  if (platformUser?.isStaticDemo) {
+    locations = DEMO_SAMPLE_DATA.objects.map((o) => ({ id: o.id, name: o.name }))
+  } else {
+    const { data } = await supabaseAdmin
+      .from('objects')
+      .select('id, name')
+      .is('deleted_at', null)
+      .order('name', { ascending: true })
+    locations = data || []
+  }
 
   const data = await getTickets(platformUser, filters)
 

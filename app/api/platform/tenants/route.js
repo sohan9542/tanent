@@ -3,10 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { hashLastName } from '@/lib/auth/verify'
 import { validateTenant } from '@/utils/validation'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 
 export async function GET(request) {
+  let user
   try {
-    await requirePlatformAdmin()
+    user = await requirePlatformAdmin()
   } catch (error) {
     if (error.message?.includes('redirect')) {
       return NextResponse.json(
@@ -27,6 +29,30 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
+
+    if (user?.isStaticDemo) {
+      let tenants = DEMO_SAMPLE_DATA.tenants
+      if (objectId) {
+        tenants = tenants.filter((t) => t.object?.id === objectId)
+      }
+      if (search) {
+        const q = search.toLowerCase()
+        tenants = tenants.filter(
+          (t) =>
+            t.tenant_id.toLowerCase().includes(q) ||
+            t.first_name.toLowerCase().includes(q) ||
+            t.last_name.toLowerCase().includes(q) ||
+            (t.email || '').toLowerCase().includes(q)
+        )
+      }
+      return NextResponse.json({
+        tenants: tenants.slice(offset, offset + limit),
+        total: tenants.length,
+        page,
+        limit,
+        demo: true,
+      })
+    }
 
     let query = supabaseAdmin
       .from('tenants')

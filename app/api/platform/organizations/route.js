@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 
 /**
  * GET /api/platform/organizations - List all organizations
@@ -11,7 +12,10 @@ export async function GET() {
 
     // Static demo session — no DB
     if (user?.isStaticDemo) {
-      return NextResponse.json({ organizations: [], demo: true })
+      return NextResponse.json({
+        organizations: DEMO_SAMPLE_DATA.organizations,
+        demo: true,
+      })
     }
 
     const { data: organizations, error } = await supabaseAdmin

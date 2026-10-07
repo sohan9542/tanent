@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentPlatformUser } from '@/lib/platform-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 import LocationsManager from './LocationsManager'
 
 export default async function PlatformLocationsPage() {
@@ -11,13 +12,18 @@ export default async function PlatformLocationsPage() {
     redirect('/platform/login')
   }
 
-  // Fetch defect location labels
-  const { data: locations, error } = await supabaseAdmin
-    .from('defect_location_labels')
-    .select('*')
-    .is('deleted_at', null)
-    .order('display_order', { ascending: true })
-    .order('label', { ascending: true })
+  let locations = []
+  if (platformUser?.isStaticDemo) {
+    locations = DEMO_SAMPLE_DATA.locations
+  } else {
+    const { data } = await supabaseAdmin
+      .from('defect_location_labels')
+      .select('*')
+      .is('deleted_at', null)
+      .order('display_order', { ascending: true })
+      .order('label', { ascending: true })
+    locations = data || []
+  }
 
   return (
     <div className="p-6">

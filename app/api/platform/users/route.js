@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
 import { createClient } from '@supabase/supabase-js'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -33,9 +34,18 @@ export async function GET(request) {
     const offset = (page - 1) * limit
 
     if (user?.isStaticDemo) {
+      let users = DEMO_SAMPLE_DATA.users
+      if (search) {
+        const q = search.toLowerCase()
+        users = users.filter(
+          (u) =>
+            u.email.toLowerCase().includes(q) ||
+            (u.name || '').toLowerCase().includes(q)
+        )
+      }
       return NextResponse.json({
-        users: [],
-        total: 0,
+        users: users.slice(offset, offset + limit),
+        total: users.length,
         page,
         limit,
         demo: true,

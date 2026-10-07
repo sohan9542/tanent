@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePlatformAdmin } from '@/lib/platform-auth'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { DEMO_SAMPLE_DATA } from '@/lib/demo-config'
 
 /**
  * GET /api/platform/objects - List all objects
@@ -10,7 +11,10 @@ export async function GET() {
     const user = await requirePlatformAdmin()
 
     if (user?.isStaticDemo) {
-      return NextResponse.json({ objects: [], demo: true })
+      return NextResponse.json({
+        objects: DEMO_SAMPLE_DATA.objects,
+        demo: true,
+      })
     }
 
     const { data: objects, error } = await supabaseAdmin
